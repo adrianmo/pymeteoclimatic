@@ -33,7 +33,7 @@ jobs:
           python setup.py install
       - name: Test with pytest
         run: |
-          pytest -v tests/ --cov=.
+          pytest --cov=meteoclimatic/ -v tests/
       - name: Publish Coverage
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
