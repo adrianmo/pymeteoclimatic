@@ -4,6 +4,7 @@ A Python wrapper around the Meteoclimatic service.
 
 [![](https://img.shields.io/pypi/v/meteoclimatic)](https://pypi.org/project/meteoclimatic/)
 [![](https://img.shields.io/pypi/pyversions/meteoclimatic)](https://pypi.org/project/meteoclimatic/)
+[![Coverage Status](https://coveralls.io/repos/github/adrianmo/pymeteoclimatic/badge.svg?branch=master)](https://coveralls.io/github/adrianmo/pymeteoclimatic?branch=master)
 [![Build & Test](https://github.com/adrianmo/pymeteoclimatic/workflows/Build%20and%20Test/badge.svg)](https://github.com/adrianmo/pymeteoclimatic/actions?query=workflow%3A%22Build+and+Test%22)
 [![Publish to Pypi](https://github.com/adrianmo/pymeteoclimatic/workflows/Publish%20to%20Pypi/badge.svg)](https://github.com/adrianmo/pymeteoclimatic/actions?query=workflow%3A%22Publish+to+Pypi%22)
 
