@@ -1,0 +1,56 @@
+<rss version="2.0"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+  xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:georss="http://www.georss.org/georss"
+>
+ <channel>
+  <title>Meteoclimatic - RSS</title>
+  <link>http://meteoclimatic.net/</link>
+  <description>Meteoclimatic - RSS</description>
+  <copyright>Creative Commons - Attribution-NonCommercial-NoDerivs 3.0 Unported</copyright>
+  <language>es</language>
+  <ttl>60</ttl>
+  <pubDate>Thu, 04 Jun 2020 11:04:39 +0000</pubDate>
+  <image>
+   <title>Meteoclimatic - RSS</title>
+   <url>http://meteoclimatic.net/img/rss.gif</url>
+   <link>http://meteoclimatic.net/</link>
+  </image>
+
+  <docs>http://meteoclimatic.net/index/wp/rss_es.html</docs>  <item>
+   <title>Pu&#231;ol-Ciudad Jard&#237;n (Valencia)</title>
+   <link>http://www.meteoclimatic.net/perfil/ESPVA4600000046530D</link>
+   <pubDate>Thu, 04 Jun 2020 10:45:00 +0000</pubDate>
+   <guid>cbb325bb51549b202913396d2fd177e1</guid>
+   <description>
+    <![CDATA[
+     <ul>
+<li><div  class="sprite-sem_ok"></div> <a href="http://www.meteoclimatic.net/perfil/ESPVA4600000046530D">Pu&#231;ol-Ciudad Jard&#237;n</a></li>
+<ul>
+<li> Actualizado: 04-06-2020 10:45 UTC</li>
+<li>Temperatura: <b>23,1</b> &#186;C (
+M&#225;x.: <b style="color: red">25,4</b> / 
+M&#237;n.: <b style="color: blue">19,6</b> )</li>
+<li>Humedad: <b>49,0</b> % (
+M&#225;x.: <b style="color: red">85,0</b> / 
+M&#237;n.: <b style="color: blue">47,0</b> )</li>
+<li>Bar&#243;metro: <b>1002,2</b> hPa (
+M&#225;x.: <b style="color: red">1002,8</b> / 
+M&#237;n.: <b style="color: blue">999,9</b> )</li>
+<li>Precip.: <b>0,2</b> mm</li>
+</ul>
+     </ul>
+    ]]>
+<!--
+[[<BEGIN:ESPVA4600000046530D:DATA>]]
+[[<ESPVA4600000046530D;(23,1;25,4;19,6;sun);(49,0;85,0;47,0);(1002,2;1002,8;999,9);(-99,0;-99,0;-99);(0,2);Pu&#231;ol-Ciudad Jard&#237;n>]]
+[[<END:ESPVA4600000046530D:DATA>]]
+-->
+   </description>
+   <georss:point>39.62 -0.31</georss:point>
+   <geo:Point>
+    <geo:lat>39.62</geo:lat>
+    <geo:long>-0.31</geo:long>
+   </geo:Point>
+  </item> </channel>
+</rss>

@@ -1,0 +1,59 @@
+<rss version="2.0"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+  xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:georss="http://www.georss.org/georss"
+>
+ <channel>
+  <title>Meteoclimatic - RSS</title>
+  <link>http://meteoclimatic.net/</link>
+  <description>Meteoclimatic - RSS</description>
+  <copyright>Creative Commons - Attribution-NonCommercial-NoDerivs 3.0 Unported</copyright>
+  <language>es</language>
+  <ttl>60</ttl>
+  <pubDate>Thu, 04 Jun 2020 11:02:23 +0000</pubDate>
+  <image>
+   <title>Meteoclimatic - RSS</title>
+   <url>http://meteoclimatic.net/img/rss.gif</url>
+   <link>http://meteoclimatic.net/</link>
+  </image>
+
+  <docs>http://meteoclimatic.net/index/wp/rss_es.html</docs>  <item>
+   <title>Sope&#241;a de Curue&#241;o (Le&#243;n)</title>
+   <link>http://www.meteoclimatic.net/perfil/ESCYL2400000024840A</link>
+   <pubDate>Thu, 04 Jun 2020 10:39:00 +0000</pubDate>
+   <guid>384247a6827ca641d709576b8a1fb9c8</guid>
+   <description>
+    <![CDATA[
+     <ul>
+<li><img src="http://meteoclimatic.net/img/sem_qt.png" style="width: 12px; height: 12px; border: 0px;" alt="***" /> <a href="http://www.meteoclimatic.net/perfil/ESCYL2400000024840A">Sope&#241;a de Curue&#241;o</a></li>
+<ul>
+<li> Actualizado: 04-06-2020 10:39 UTC</li>
+<li>Temperatura: <b>11,4</b> &#186;C (
+M&#225;x.: <b style="color: red">13,0</b> / 
+M&#237;n.: <b style="color: blue">4,0</b> )</li>
+<li>Humedad: <b>76,0</b> % (
+M&#225;x.: <b style="color: red">100,0</b> / 
+M&#237;n.: <b style="color: blue">71,0</b> )</li>
+<li>Bar&#243;metro: <b>1007,9</b> hPa (
+M&#225;x.: <b style="color: red">1007,9</b> / 
+M&#237;n.: <b style="color: blue">1004,0</b> )</li>
+<li>Viento: <b>2,0</b> km/h (
+M&#225;x.: <b style="color: red">27,0</b> )</li>
+<li>Direcci&#243;n del viento: <b>340</b> - NNW</li>
+<li>Precip.: <b>0,2</b> mm</li>
+</ul>
+     </ul>
+    ]]>
+<!--
+[[<BEGIN:ESCYL2400000024840A:DATA>]]
+[[<ESCYL2400000024840A;(11,4;13,0;4,0;hazesun);(76,0;100,0;71,0);(1007,9;1007,9;1004,0);(2,0;27,0;340);(0,2);Sope&#241;a de Curue&#241;o>]]
+[[<END:ESCYL2400000024840A:DATA>]]
+-->
+   </description>
+   <georss:point>42.81 -5.41</georss:point>
+   <geo:Point>
+    <geo:lat>42.81</geo:lat>
+    <geo:long>-5.41</geo:long>
+   </geo:Point>
+  </item> </channel>
+</rss>

@@ -1,0 +1,59 @@
+<rss version="2.0"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+  xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:georss="http://www.georss.org/georss"
+>
+ <channel>
+  <title>Meteoclimatic - RSS</title>
+  <link>http://meteoclimatic.net/</link>
+  <description>Meteoclimatic - RSS</description>
+  <copyright>Creative Commons - Attribution-NonCommercial-NoDerivs 3.0 Unported</copyright>
+  <language>es</language>
+  <ttl>60</ttl>
+  <pubDate>Thu, 04 Jun 2020 11:10:27 +0000</pubDate>
+  <image>
+   <title>Meteoclimatic - RSS</title>
+   <url>http://meteoclimatic.net/img/rss.gif</url>
+   <link>http://meteoclimatic.net/</link>
+  </image>
+
+  <docs>http://meteoclimatic.net/index/wp/rss_es.html</docs>  <item>
+   <title>Momp&#237;a (Cantabria)</title>
+   <link>http://www.meteoclimatic.net/perfil/ESCTB3900000039108A</link>
+   <pubDate>Thu, 04 Jun 2020 11:00:00 +0000</pubDate>
+   <guid>9db919b5d20545541f4981cb20b751ad</guid>
+   <description>
+    <![CDATA[
+     <ul>
+<li><img src="http://meteoclimatic.net/img/sem_qv.png" style="width: 12px; height: 12px; border: 0px;" alt="***" /> <a href="http://www.meteoclimatic.net/perfil/ESCTB3900000039108A">Momp&#237;a</a></li>
+<ul>
+<li> Actualizado: 04-06-2020 11:00 UTC</li>
+<li>Temperatura: <b>17,7</b> &#186;C (
+M&#225;x.: <b style="color: red">18,9</b> / 
+M&#237;n.: <b style="color: blue">13,8</b> )</li>
+<li>Humedad: <b>80,0</b> % (
+M&#225;x.: <b style="color: red">96,0</b> / 
+M&#237;n.: <b style="color: blue">76,0</b> )</li>
+<li>Bar&#243;metro: <b>1009,0</b> hPa (
+M&#225;x.: <b style="color: red">1009,6</b> / 
+M&#237;n.: <b style="color: blue">1006,4</b> )</li>
+<li>Viento: <b>21,0</b> km/h (
+M&#225;x.: <b style="color: red">48,0</b> )</li>
+<li>Direcci&#243;n del viento: <b>292</b> - WNW</li>
+<li>Precip.: <b>10,6</b> mm</li>
+</ul>
+     </ul>
+    ]]>
+<!--
+[[<BEGIN:ESCTB3900000039108A:DATA>]]
+[[<ESCTB3900000039108A;(17,7;18,9;13,8;hazesun);(80,0;96,0;76,0);(1009,0;1009,6;1006,4);(21,0;48,0;292);(10,6);Momp&#237;a>]]
+[[<END:ESCTB3900000039108A:DATA>]]
+-->
+   </description>
+   <georss:point>43.44 -3.92</georss:point>
+   <geo:Point>
+    <geo:lat>43.44</geo:lat>
+    <geo:long>-3.92</geo:long>
+   </geo:Point>
+  </item> </channel>
+</rss>

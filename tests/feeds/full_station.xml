@@ -1,0 +1,59 @@
+<rss version="2.0"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+  xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:georss="http://www.georss.org/georss"
+>
+ <channel>
+  <title>Meteoclimatic - RSS</title>
+  <link>http://meteoclimatic.net/</link>
+  <description>Meteoclimatic - RSS</description>
+  <copyright>Creative Commons - Attribution-NonCommercial-NoDerivs 3.0 Unported</copyright>
+  <language>es</language>
+  <ttl>60</ttl>
+  <pubDate>Thu, 04 Jun 2020 10:58:23 +0000</pubDate>
+  <image>
+   <title>Meteoclimatic - RSS</title>
+   <url>http://meteoclimatic.net/img/rss.gif</url>
+   <link>http://meteoclimatic.net/</link>
+  </image>
+
+  <docs>http://meteoclimatic.net/index/wp/rss_es.html</docs>  <item>
+   <title>Reus - Nord (Tarragona)</title>
+   <link>http://www.meteoclimatic.net/perfil/ESCAT4300000043206B</link>
+   <pubDate>Thu, 04 Jun 2020 10:48:01 +0000</pubDate>
+   <guid>72835ce6195965cd1ba2d61b014de688</guid>
+   <description>
+    <![CDATA[
+     <ul>
+<li><img src="http://meteoclimatic.net/img/sem_tpv.png" style="width: 12px; height: 12px; border: 0px;" alt="***" /> <a href="http://www.meteoclimatic.net/perfil/ESCAT4300000043206B">Reus - Nord</a></li>
+<ul>
+<li> Actualizado: 04-06-2020 10:48 UTC</li>
+<li>Temperatura: <b>17,6</b> &#186;C (
+M&#225;x.: <b style="color: red">17,9</b> / 
+M&#237;n.: <b style="color: blue">16,0</b> )</li>
+<li>Humedad: <b>77,0</b> % (
+M&#225;x.: <b style="color: red">96,0</b> / 
+M&#237;n.: <b style="color: blue">74,0</b> )</li>
+<li>Bar&#243;metro: <b>1002,0</b> hPa (
+M&#225;x.: <b style="color: red">1003,8</b> / 
+M&#237;n.: <b style="color: blue">1000,9</b> )</li>
+<li>Viento: <b>0,0</b> km/h (
+M&#225;x.: <b style="color: red">29,0</b> )</li>
+<li>Direcci&#243;n del viento: <b>300</b> - WNW</li>
+<li>Precip.: <b>3,2</b> mm</li>
+</ul>
+     </ul>
+    ]]>
+<!--
+[[<BEGIN:ESCAT4300000043206B:DATA>]]
+[[<ESCAT4300000043206B;(17,6;17,9;16,0;hazesun);(77,0;96,0;74,0);(1002,0;1003,8;1000,9);(0,0;29,0;300);(3,2);Reus - Nord>]]
+[[<END:ESCAT4300000043206B:DATA>]]
+-->
+   </description>
+   <georss:point>41.17 1.11</georss:point>
+   <geo:Point>
+    <geo:lat>41.17</geo:lat>
+    <geo:long>1.11</geo:long>
+   </geo:Point>
+  </item> </channel>
+</rss>
