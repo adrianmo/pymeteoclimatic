@@ -6,8 +6,8 @@ with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='meteoclimatic',
-    version='0.0.2',
+    name='pymeteoclimatic',
+    version='0.0.3',
     description='A Python wrapper around the Meteoclimatic service',
     long_description=long_description,
     long_description_content_type='text/markdown',
