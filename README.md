@@ -15,9 +15,9 @@ PyMeteoclimatic relies on the [Meteoclimatic RSS feed](https://www.meteoclimatic
 
 ## What data can I get?
 
-With PyMeteoclimatic you can weather information directly from a certain Meteoclimatic station identified by its code. You can find out the code from a station close to you in the Meteoclimatic website.
+With PyMeteoclimatic you can obtain weather information directly from Meteoclimatic stations identified by their code. You can find out the station code from the station profile page in the Meteoclimatic site.
 
-When obtaining the weather information from a station, you will get an `meteoclimatic.Observation` object, which represents the weather which is currently being observed from a certain station. 
+When obtaining the weather information from a station, you will get a `meteoclimatic.Observation` object, which represents the weather which is currently being observed from a certain station and contains the following fields.
 
 | Field | Type | Description |
 | --- | --- | --- |
