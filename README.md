@@ -2,7 +2,10 @@
 
 A Python wrapper around the Meteoclimatic service.
 
-![Build & Test](https://github.com/adrianmo/pymeteoclimatic/workflows/Build%20and%20Test/badge.svg)
+[![](https://img.shields.io/pypi/v/meteoclimatic)](https://pypi.org/project/meteoclimatic/)
+[![](https://img.shields.io/pypi/pyversions/meteoclimatic)](https://pypi.org/project/meteoclimatic/)
+[![Build & Test](https://github.com/adrianmo/pymeteoclimatic/workflows/Build%20and%20Test/badge.svg)](https://github.com/adrianmo/pymeteoclimatic/actions?query=workflow%3A%22Build+and+Test%22)
+[![Publish to Pypi](https://github.com/adrianmo/pymeteoclimatic/workflows/Publish%20to%20Pypi/badge.svg)](https://github.com/adrianmo/pymeteoclimatic/actions?query=workflow%3A%22Publish+to+Pypi%22)
 
 PyMeteoclimatic is a client Python wrapper library for [Meteoclimatic](https://www.meteoclimatic.net). Meteoclimatic is a large network of non-professional automatic real-time weather stations and an important directory of weather resources. The geographical scope of Meteoclimatic comprises the Iberian Peninsula, the two Spanish archipelagos (the Balearic Islands and the Canary Islands), southern France and Africa near the Strait of Gibraltar.
 
