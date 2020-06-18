@@ -4,7 +4,7 @@ import re
 class FeedItemHelper(object):
     """Helper class to get content from a Meteoclimatic RSS feed item."""
 
-    _regex_pattern = r"\[\[\<(?P<station_code>\w+);\((?P<temp_current>-?[0-9,]+);(?P<temp_max>-?[0-9,]+);(?P<temp_min>-?[0-9,]+);(?P<condition>\w+)\);\((?P<humidity_current>-?[0-9,]+);(?P<humidity_max>-?[0-9,]+);(?P<humidity_min>-?[0-9,]+)\);\((?P<pressure_current>-?[0-9,]+);(?P<pressure_max>-?[0-9,]+);(?P<pressure_min>-?[0-9,]+)\);\((?P<wind_current>-?[0-9,]+);(?P<wind_max>-?[0-9,]+);(?P<wind_bearing>-?[0-9,]+)\);\((?P<rain>-?[0-9,]+)\);"  # noqa: E501
+    _regex_pattern = r"\[\[\<(?P<station_code>\w+);\((?P<temp_current>-?[0-9,]+);(?P<temp_max>-?[0-9,]+);(?P<temp_min>-?[0-9,]+);(?P<condition>\w*)\);\((?P<humidity_current>-?[0-9,]*);(?P<humidity_max>-?[0-9,]*);(?P<humidity_min>-?[0-9,]*)\);\((?P<pressure_current>-?[0-9,]*);(?P<pressure_max>-?[0-9,]*);(?P<pressure_min>-?[0-9,]*)\);\((?P<wind_current>-?[0-9,]*);(?P<wind_max>-?[0-9,]*);(?P<wind_bearing>-?[0-9,]*)\);\((?P<rain>-?[0-9,]*)\);"  # noqa: E501
 
     def __init__(self, feed_item):
         """Initialize the class."""
@@ -15,9 +15,12 @@ class FeedItemHelper(object):
     def get_text(self, field_name):
         """Return the value in 'field_name' from the item or None if not found."""
         try:
-            return self.match.group(field_name)
+            value = self.match.group(field_name)
         except IndexError:
             return None
+        if len(value) == 0:
+            return None
+        return value
 
     def get_float(self, field_name):
         """Return the value in 'field_name' from the item or None if not found."""
