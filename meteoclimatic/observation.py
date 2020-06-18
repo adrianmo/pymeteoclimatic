@@ -64,7 +64,7 @@ class Observation:
         try:
             condition = Condition(condition_str)
         except ValueError:
-            logging.warn(
+            logging.info(
                 "Unrecognized condidition '%s', using literal value instead of meteoclimatic.Condition" % (condition_str, ))
             condition = condition_str
         temp_current = helper.get_float("temp_current")

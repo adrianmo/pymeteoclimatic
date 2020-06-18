@@ -8,11 +8,16 @@ class AutoName(Enum):
 
 
 class Condition(AutoName):
-    sun = auto()
-    hazesun = auto()
-    suncloud = auto()
-    rain = auto()
+    fog = auto()
     hazemoon = auto()
+    hazesun = auto()
+    lightning = auto()
+    mist = auto()
+    moon = auto()
+    rain = auto()
+    sun = auto()
+    suncloud = auto()
+    storm = auto()
 
 
 class Weather:

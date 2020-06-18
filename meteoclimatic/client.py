@@ -2,6 +2,7 @@ from urllib.request import urlopen
 from urllib.error import HTTPError
 from bs4 import BeautifulSoup
 
+from meteoclimatic.exceptions import MeteoclimaticError, StationNotFound
 from meteoclimatic import Observation
 
 
@@ -18,8 +19,8 @@ class MeteoclimaticClient(object):
         try:
             parse_xml_url = urlopen(url)
         except HTTPError as exc:
-            raise Exception("Error fetching station data [status_code=%d]" %
-                            (exc.getcode(), )) from exc
+            raise MeteoclimaticError("Error fetching station data [status_code=%d]" %
+                  (exc.getcode(), )) from exc
 
         xml_page = parse_xml_url.read()
         parse_xml_url.close()
@@ -27,8 +28,7 @@ class MeteoclimaticClient(object):
         items = soup_page.findAll("item")
 
         if len(items) == 0:
-            raise ValueError(
-                "Station code %s did not return any item" % (station_code, ))
+            raise StationNotFound(station_code)
 
         observation = Observation.from_feed_item(items[0])
         return observation
