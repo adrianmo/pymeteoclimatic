@@ -14,6 +14,7 @@ class Condition(AutoName):
     lightning = auto()
     mist = auto()
     moon = auto()
+    mooncloud = auto()
     rain = auto()
     sun = auto()
     suncloud = auto()
