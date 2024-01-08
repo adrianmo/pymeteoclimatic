@@ -15,8 +15,8 @@ setup(
     author_email='adrian@morenomartinez.com',
     url='https://github.com/adrianmo/pymeteoclimatic',
     packages=['meteoclimatic', ],
-    install_requires=['lxml~=4.5',
-                      'beautifulsoup4~=4.9'
+    install_requires=['lxml>=4.5',
+                      'beautifulsoup4>=4.9'
                       ],
     python_requires='>=3.6',
     classifiers=[
