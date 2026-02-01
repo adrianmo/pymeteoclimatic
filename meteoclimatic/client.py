@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 
 from meteoclimatic.exceptions import MeteoclimaticError, StationNotFound
 from meteoclimatic import Observation
+from meteoclimatic import __version__
 
 
 class MeteoclimaticClient(object):
@@ -16,7 +17,7 @@ class MeteoclimaticClient(object):
     def weather_at_station(self, station_code):
         url = self._base_url.format(station_code=station_code)
 
-        req = Request(url, headers={"User-Agent": "HomeAssistant Meteoclimatic"})
+        req = Request(url, headers={"User-Agent": f"pymeteoclimatic/{__version__}"})
 
         try:
             parse_xml_url = urlopen(req)
