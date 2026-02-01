@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pymeteoclimatic"
+dynamic = ["version"]
+description = "A Python wrapper around the Meteoclimatic service"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Adrián Moreno", email = "adrian@morenomartinez.com"}
+]
+keywords = ["meteoclimatic", "client", "library", "api", "weather"]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "lxml>=4.5",
+    "beautifulsoup4>=4.9",
+]
+
+[project.urls]
+Homepage = "https://github.com/adrianmo/pymeteoclimatic"
+Repository = "https://github.com/adrianmo/pymeteoclimatic"
+
+[tool.setuptools.packages.find]
+include = ["meteoclimatic*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "meteoclimatic.__version__"}

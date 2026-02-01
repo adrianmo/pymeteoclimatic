@@ -1,3 +1,5 @@
+__version__ = "0.1.1"
+
 from meteoclimatic.weather import Weather, Condition  # noqa: F401
 from meteoclimatic.station import Station  # noqa: F401
 from meteoclimatic.observation import Observation  # noqa: F401
