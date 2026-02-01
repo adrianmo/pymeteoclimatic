@@ -1,9 +1,11 @@
 import os
 import unittest
 from urllib.error import HTTPError
+from urllib.request import Request
 from meteoclimatic.exceptions import StationNotFound, MeteoclimaticError
 from meteoclimatic import MeteoclimaticClient
-from unittest.mock import patch
+from meteoclimatic import __version__
+from unittest.mock import patch, MagicMock
 
 
 class TestMeteoclimaticClient(unittest.TestCase):
@@ -19,8 +21,14 @@ class TestMeteoclimaticClient(unittest.TestCase):
 
         res = self.client.weather_at_station("ESCAT4300000043206B")
 
-        mock_urlopen.assert_called_with(
-            "https://www.meteoclimatic.net/feed/rss/ESCAT4300000043206B")
+        # Verify urlopen was called with a Request object
+        self.assertEqual(mock_urlopen.call_count, 1)
+        called_request = mock_urlopen.call_args[0][0]
+        self.assertIsInstance(called_request, Request)
+        self.assertEqual(called_request.full_url, 
+                        "https://www.meteoclimatic.net/feed/rss/ESCAT4300000043206B")
+        self.assertEqual(called_request.get_header("User-agent"), 
+                        f"pymeteoclimatic/{__version__}")
         self.assertEqual(res.station.code, "ESCAT4300000043206B")
 
     @patch('meteoclimatic.client.urlopen', autospec=True)
@@ -41,3 +49,21 @@ class TestMeteoclimaticClient(unittest.TestCase):
             self.client.weather_at_station("ESCAT4300000043206B")
         self.assertEqual(str(
             error.exception), "Error fetching station data [status_code=404]")
+
+    @patch('meteoclimatic.client.urlopen', autospec=True)
+    def test_user_agent_header_is_set(self, mock_urlopen):
+        """Test that the User-Agent header is correctly set with version"""
+        mock_response = MagicMock()
+        mock_response.read.return_value = open(os.path.join(
+            os.path.dirname(__file__), "feeds", "full_station.xml")).read()
+        mock_urlopen.return_value = mock_response
+
+        self.client.weather_at_station("ESCAT4300000043206B")
+
+        # Verify the Request object has the correct User-Agent
+        called_request = mock_urlopen.call_args[0][0]
+        self.assertIsInstance(called_request, Request)
+        user_agent = called_request.get_header("User-agent")
+        self.assertEqual(user_agent, f"pymeteoclimatic/{__version__}")
+        # Verify it follows the expected format
+        self.assertTrue(user_agent.startswith("pymeteoclimatic/"))
