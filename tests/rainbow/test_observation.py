@@ -2,7 +2,7 @@ import pytest
 import os
 from datetime import datetime, timezone
 from bs4 import BeautifulSoup
-from meteoclimatic import Observation, Station, Weather, Condition
+from meteoclimatic.rainbow import Observation, Station, Weather, Condition
 
 
 class TestObservation:

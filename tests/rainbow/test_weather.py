@@ -1,6 +1,6 @@
 import datetime
 import pytest
-from meteoclimatic import Condition, Weather
+from meteoclimatic.rainbow import Condition, Weather
 
 
 class TestWeather:

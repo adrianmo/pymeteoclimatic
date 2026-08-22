@@ -1,5 +1,5 @@
 import pytest
-from meteoclimatic import Station
+from meteoclimatic.rainbow import Station
 
 
 class TestStation:

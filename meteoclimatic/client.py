@@ -1,39 +1,24 @@
-from urllib.request import Request, urlopen
-from urllib.error import HTTPError
-from bs4 import BeautifulSoup
+"""Deprecated import path for ``meteoclimatic.rainbow.client``.
 
-from meteoclimatic.exceptions import MeteoclimaticError, StationNotFound
-from meteoclimatic import Observation
-from meteoclimatic import __version__
+.. deprecated::
+   The RSS transport moved to :mod:`meteoclimatic.rainbow` and its client class
+   was renamed to ``Client``. ``MeteoclimaticClient`` remains available here and
+   at the package root. This compatibility module is removed in
+   pymeteoclimatic 1.0.
+"""
 
+import warnings
 
-class MeteoclimaticClient(object):
-    """
-    Entry point class providing clients for the Meteoclimatic service.
-    """
+from meteoclimatic.rainbow.client import Client  # noqa: F401
 
-    _base_url = "https://www.meteoclimatic.net/feed/rss/{station_code}"
+#: Historical name of :class:`meteoclimatic.rainbow.client.Client`.
+MeteoclimaticClient = Client
 
-    def weather_at_station(self, station_code):
-        url = self._base_url.format(station_code=station_code)
+warnings.warn(
+    "meteoclimatic.client moved to meteoclimatic.rainbow.client and this "
+    "compatibility module is removed in pymeteoclimatic 1.0.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-        req = Request(url, headers={"User-Agent": f"pymeteoclimatic/{__version__}"})
-
-        try:
-            parse_xml_url = urlopen(req)
-        except HTTPError as exc:
-            raise MeteoclimaticError(
-                "Error fetching station data [status_code=%d]" % (exc.getcode(),)
-            ) from exc
-
-        xml_page = parse_xml_url.read()
-        parse_xml_url.close()
-
-        soup_page = BeautifulSoup(xml_page, "xml")
-        items = soup_page.findAll("item")
-
-        if len(items) == 0:
-            raise StationNotFound(station_code)
-
-        observation = Observation.from_feed_item(items[0])
-        return observation
+__all__ = ["Client", "MeteoclimaticClient"]
