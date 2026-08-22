@@ -29,9 +29,19 @@ classifiers = [
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries",
 ]
+# The normalized model, parser and synchronous client need no third-party
+# package. lxml and beautifulsoup4 are required only by the deprecated RSS
+# transport and are removed together with it at 1.0.
 dependencies = [
     "lxml>=4.5",
     "beautifulsoup4>=4.9",
+]
+
+[project.optional-dependencies]
+# Asynchronous client. Optional so that a synchronous consumer is never obliged
+# to install an HTTP stack it does not use.
+async = [
+    "aiohttp>=3.8",
 ]
 
 [project.urls]

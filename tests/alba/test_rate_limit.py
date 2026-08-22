@@ -1,0 +1,243 @@
+"""Rate-limit self-protection, TTL hints and logging.
+
+The scenario that matters most here is the one a real deployment hits: several
+stations polled with the same API key. Meteoclimatic applies its limits per user
+and *extends* a block when a request arrives during it, so a client that keeps
+sending makes the situation worse rather than merely failing.
+"""
+
+import io
+import json
+import logging
+import os
+import unittest
+from datetime import datetime, timedelta, timezone
+from unittest.mock import patch
+from urllib.error import HTTPError
+
+from meteoclimatic.alba import (
+    Client,
+    RateLimitError,
+    parse_current_data,
+)
+from meteoclimatic.alba._http import MINIMUM_BLOCK_SECONDS, RateLimitBlock
+
+FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
+SECRET = "super-secret-api-identifier"
+
+
+def raw(name):
+    with open(os.path.join(FIXTURES, name), "rb") as handle:
+        return handle.read()
+
+
+def load(name):
+    with open(os.path.join(FIXTURES, name), encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+class FakeResponse:
+    def __init__(self, body, headers=None):
+        self._body = body
+        self.headers = headers or {}
+
+    def read(self):
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+
+def rate_limited(retry_after="118"):
+    return HTTPError(
+        "https://api.m11c.net/v3/station/currentdata",
+        429,
+        "Too Many Requests",
+        {"Retry-After": retry_after},
+        io.BytesIO(raw("error_429.json")),
+    )
+
+
+class TestBlockPreventsFurtherRequests(unittest.TestCase):
+
+    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    def test_second_request_does_not_reach_the_network(self, mock_urlopen):
+        client = Client(SECRET)
+        mock_urlopen.side_effect = rate_limited()
+
+        with self.assertRaises(RateLimitError):
+            client.get_current_data("AA111")
+        self.assertEqual(mock_urlopen.call_count, 1)
+
+        # The second call must fail fast, without sending anything.
+        with self.assertRaises(RateLimitError) as caught:
+            client.get_current_data("AA111")
+        self.assertEqual(mock_urlopen.call_count, 1)
+        self.assertGreater(caught.exception.retry_after, 0)
+
+    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    def test_multiple_stations_sharing_one_client_are_protected(self, mock_urlopen):
+        """The scenario of several stations configured with the same API key.
+
+        The client is scoped to a credential, not to a station, so reusing one
+        client across stations gives coordinated protection: once any station
+        triggers a block, no other station is allowed to extend it.
+        """
+        client = Client(SECRET)
+        mock_urlopen.side_effect = rate_limited()
+
+        with self.assertRaises(RateLimitError):
+            client.get_current_data("AA111")
+        self.assertEqual(mock_urlopen.call_count, 1)
+
+        for station in ("BB222", "CC333", "DD444"):
+            with self.assertRaises(RateLimitError):
+                client.get_current_data(station)
+
+        # None of the other stations sent a request.
+        self.assertEqual(mock_urlopen.call_count, 1)
+
+    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    def test_separate_clients_do_not_share_a_block(self, mock_urlopen):
+        """Honest limitation: one client per station protects only that station.
+
+        This is why the recommended usage is one client per API key. If a
+        consumer creates a client per station instead, each one still stops
+        harming itself, but it cannot know about another client's block.
+        """
+        first = Client(SECRET)
+        second = Client(SECRET)
+        mock_urlopen.side_effect = rate_limited()
+
+        with self.assertRaises(RateLimitError):
+            first.get_current_data("AA111")
+        with self.assertRaises(RateLimitError):
+            second.get_current_data("BB222")
+
+        self.assertEqual(mock_urlopen.call_count, 2)
+
+    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    def test_requests_resume_once_the_block_expires(self, mock_urlopen):
+        client = Client(SECRET)
+        mock_urlopen.side_effect = rate_limited("1")
+
+        with self.assertRaises(RateLimitError):
+            client.get_current_data("AA111")
+
+        # Expire the block without sleeping.
+        client._block._deadline = None
+        mock_urlopen.side_effect = None
+        mock_urlopen.return_value = FakeResponse(raw("currentdata_full.json"))
+
+        observation = client.get_current_data("AA111")
+        self.assertEqual(observation.temperature.current, 21.5)
+        self.assertIsNone(client.blocked_until)
+
+    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    def test_blocked_until_is_inspectable(self, mock_urlopen):
+        client = Client(SECRET)
+        self.assertIsNone(client.blocked_until)
+        mock_urlopen.side_effect = rate_limited()
+        with self.assertRaises(RateLimitError):
+            client.get_current_data("AA111")
+        self.assertIsNotNone(client.blocked_until)
+        self.assertGreater(client.blocked_until, datetime.now(timezone.utc))
+
+
+class TestRateLimitBlock(unittest.TestCase):
+
+    def test_missing_retry_after_falls_back_to_minimum_window(self):
+        block = RateLimitBlock()
+        self.assertEqual(block.record(None), MINIMUM_BLOCK_SECONDS)
+        self.assertIsNotNone(block.remaining())
+
+    def test_block_is_never_shortened(self):
+        """A later, smaller value must not cut an existing longer block."""
+        block = RateLimitBlock()
+        block.record(600)
+        block.record(5)
+        self.assertGreater(block.remaining(), 100)
+
+    def test_not_blocked_by_default(self):
+        block = RateLimitBlock()
+        self.assertIsNone(block.remaining())
+        self.assertIsNone(block.blocked_until)
+        block.raise_if_blocked()  # must not raise
+
+
+class TestLogging(unittest.TestCase):
+
+    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    def test_rate_limit_is_logged_as_a_warning(self, mock_urlopen):
+        """A 429 is otherwise invisible to the operator."""
+        mock_urlopen.side_effect = rate_limited()
+        with self.assertLogs("meteoclimatic.alba", level="WARNING") as logs:
+            with self.assertRaises(RateLimitError):
+                Client(SECRET).get_current_data("AA111")
+        joined = "\n".join(logs.output)
+        self.assertIn("rate limit", joined.lower())
+
+    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    def test_logs_never_contain_the_credential(self, mock_urlopen):
+        mock_urlopen.side_effect = rate_limited()
+        with self.assertLogs("meteoclimatic", level="DEBUG") as logs:
+            with self.assertRaises(RateLimitError):
+                Client(SECRET).get_current_data("AA111")
+        self.assertNotIn(SECRET, "\n".join(logs.output))
+
+    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    def test_successful_request_logs_only_at_debug(self, mock_urlopen):
+        mock_urlopen.return_value = FakeResponse(raw("currentdata_full.json"))
+        logger = logging.getLogger("meteoclimatic.alba.client")
+        with self.assertLogs(logger, level="DEBUG") as logs:
+            Client(SECRET).get_current_data("AA111")
+        self.assertTrue(all(record.levelno <= logging.DEBUG
+                            for record in logs.records))
+
+
+class TestTtlHint(unittest.TestCase):
+
+    def setUp(self):
+        self.fetched_at = datetime(2026, 8, 19, 10, 0, tzinfo=timezone.utc)
+        self.observation = parse_current_data(
+            load("currentdata_full.json"), fetched_at=self.fetched_at
+        )
+
+    def test_expires_at_is_derived_from_ttl(self):
+        self.assertEqual(self.observation.ttl, 226)
+        self.assertEqual(
+            self.observation.expires_at, self.fetched_at + timedelta(seconds=226)
+        )
+
+    def test_seconds_until_refresh_counts_down(self):
+        halfway = self.fetched_at + timedelta(seconds=100)
+        self.assertAlmostEqual(
+            self.observation.seconds_until_refresh(now=halfway), 126.0
+        )
+
+    def test_seconds_until_refresh_respects_a_floor(self):
+        """A stale or tiny ttl must not turn into a busy loop."""
+        late = self.fetched_at + timedelta(seconds=10000)
+        self.assertEqual(
+            self.observation.seconds_until_refresh(now=late, minimum=60), 60
+        )
+
+    def test_absent_ttl_yields_no_hint(self):
+        payload = load("currentdata_full.json")
+        del payload["data"]["ttl"]
+        observation = parse_current_data(payload)
+        self.assertIsNone(observation.ttl)
+        self.assertIsNone(observation.expires_at)
+        self.assertIsNone(observation.seconds_until_refresh())
+
+    def test_library_never_schedules_by_itself(self):
+        """The hint is data; polling remains the consumer's decision."""
+        self.assertFalse(hasattr(self.observation, "sleep"))
+        self.assertFalse(hasattr(Client, "poll"))
+
+
+if __name__ == "__main__":
+    unittest.main()

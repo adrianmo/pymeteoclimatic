@@ -1,0 +1,161 @@
+{
+  "status": 200,
+  "error": false,
+  "message": "OK",
+  "data": {
+    "ID": 1,
+    "stationCode": "BB222",
+    "name": "Example Canary Station",
+    "timezone": "Atlantic/Canary",
+    "updated": "2026-08-19T11:29:00+01:00",
+    "ttl": 249,
+    "mainQuality": 1,
+    "additionalQuality": 0,
+    "transitionalQuality": 0,
+    "coord_X": -16.0,
+    "coord_Y": 28.0,
+    "elevation": 100,
+    "meteor": "",
+    "robertsson": {
+      "A": 0,
+      "B": 0,
+      "C": 0,
+      "D": 0
+    },
+    "webcam": {
+      "URL": "",
+      "show": false
+    },
+    "extra": {
+      "sunrise": "2026-08-19T07:09:09+02:00",
+      "sunset": "2026-08-19T20:49:31+02:00",
+      "sunlength": "13 hrs. 40 min.",
+      "forecast": "<p>example forecast</p>"
+    },
+    "sensors": {
+      "TMP": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "HUM": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "BAR": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "WND": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "AZI": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "PCP": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "DHTM": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "DLTM": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "DHHM": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "DLHM": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "DHBR": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "DLBR": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "DGST": {
+        "status": true,
+        "quality": false,
+        "params": null
+      },
+      "DPCP": {
+        "status": true,
+        "quality": false,
+        "params": null
+      }
+    },
+    "wxdata": {
+      "local_day": "2026-08-19",
+      "TMP": 21.5,
+      "HUM": 60,
+      "BAR": 1013.2,
+      "WND": 5.4,
+      "AZI": 180,
+      "DHTM": 27.1,
+      "DLTM": 16.3,
+      "DHHM": null,
+      "DLHM": null,
+      "DHBR": null,
+      "DLBR": null,
+      "DGST": null,
+      "DPCP": 0,
+      "PCP": 0,
+      "SUN": null,
+      "UVI": null,
+      "AQI": null,
+      "PM1": null,
+      "PM10": null,
+      "PM25": null,
+      "DSUN": null,
+      "DUVI": null,
+      "DHAQI": null,
+      "DLAQI": null,
+      "DHPM1": null,
+      "DHPM10": null,
+      "DHPM25": null,
+      "DLPM1": null,
+      "DLPM10": null,
+      "DLPM25": null,
+      "avg_AQI": null,
+      "avg_AZI": 172,
+      "avg_BAR": 1013.0,
+      "avg_HUM": 62,
+      "avg_PCP": 0,
+      "avg_PM1": null,
+      "avg_PM10": null,
+      "avg_PM25": null,
+      "avg_SUN": null,
+      "avg_TMP": 21.0,
+      "avg_UVI": null,
+      "avg_WND": 4.9,
+      "bar_trend": "Steady",
+      "droughtdays": 29,
+      "pcp_int_max": 0,
+      "humidity_delta_3h": -4,
+      "temperature_delta_3h": 1.2,
+      "pressure_delta_3h": 0.4,
+      "pressure_delta_6h": -0.2,
+      "pressure_mean_6h": 1013.1
+    }
+  }
+}
