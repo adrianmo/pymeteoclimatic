@@ -30,7 +30,7 @@ jobs:
           flake8 meteoclimatic --count --max-complexity=10 --max-line-length=127 --statistics
       - name: Install
         run: |
-          pip install -e .
+          pip install -e ".[async]"
       - name: Test with pytest
         run: |
           pytest --cov=meteoclimatic/ -v tests/
