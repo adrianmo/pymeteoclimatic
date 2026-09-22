@@ -171,13 +171,18 @@ of confusion in weather data:
 | `temperature` | `current`, `daily_max`, `daily_min`, `average`, `delta_3h` | °C |
 | `humidity` | `current`, `daily_max`, `daily_min`, `average`, `delta_3h` | % |
 | `pressure` | `current`, `daily_max`, `daily_min`, `average`, `mean_6h`, `delta_3h`, `delta_6h`, `trend` | hPa |
-| `wind` | `speed`, `daily_gust`, `bearing`, `average_speed`, `average_bearing` | km/h, degrees |
+| `wind` | `speed`, `daily_gust`, `bearing`, `average_speed`, `average_bearing` | m/s, degrees |
 | `precipitation` | `daily_total`, `current`, `average`, `intensity_max`, `drought_days` | mm |
 | `solar` | `radiation`, `daily_radiation`, `average_radiation`, `uv_index`, `daily_uv_index`, `average_uv_index` | W/m², index |
 | `air_quality` | `aqi`, `pm1`, `pm10`, `pm25`, plus `daily_*_max`, `daily_*_min` and `average_*` | µg/m³ |
 
 `pressure.trend` is one of `Steady`, `Rising`, `Rising Quickly`, `Falling` or
 `Falling Quickly`. The `aqi` scale is still being defined by Meteoclimatic.
+
+Wind speed and gust are metres per second. The library performs no
+conversion, so a consumer that presents kilometres per hour must convert; in
+Home Assistant this is handled by declaring the native unit and letting its
+unit system convert for display.
 
 Not every station has every sensor. A value the station does not provide is
 `None`. **`None` never means zero**, and a real zero is preserved:

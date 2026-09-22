@@ -139,8 +139,15 @@ class Pressure(_Group):
 class Wind(_Group):
     """Wind speed, gust and direction.
 
-    :param speed: current wind speed, in km/h
-    :param daily_gust: strongest gust of the local civil day, in km/h
+    Speed and gust are metres per second. The unit was established by
+    measurement, not from a published figure: three stations compared
+    against the RSS feed at the same instant gave a constant ratio of
+    3.600, 3.582 and 3.636, and the km/h-to-m/s factor is exactly 3.6.
+    No conversion is applied here, so a consumer displaying km/h must
+    convert.
+
+    :param speed: current wind speed, in m/s
+    :param daily_gust: strongest gust of the local civil day, in m/s
     :param bearing: current wind bearing, in degrees from 0 to 360
     :param average_speed: mean speed; the period is not confirmed
     :param average_bearing: mean bearing; the period is not confirmed

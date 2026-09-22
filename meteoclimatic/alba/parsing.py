@@ -2,8 +2,10 @@
 
 Field mapping, units and semantics follow the agreed contract:
 
-* units are fixed per field and no conversion is performed (°C, %, hPa, km/h,
-  degrees, mm, W/m², µg/m³);
+* units are fixed per field and no conversion is performed (°C, %, hPa, m/s,
+  degrees, mm, W/m², µg/m³), where wind speed and gust are metres per
+  second, established by measurement against the RSS feed rather than
+  from a published unit;
 * an unavailable value arrives as ``null`` with the key retained, and maps to
   ``None`` - never to ``0.0``;
 * a value may arrive as an integer or a float, so it is read as a JSON number
