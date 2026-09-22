@@ -24,6 +24,7 @@ a real zero is preserved. Numeric values are floats, except counts.
 """
 
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 __all__ = [
     "Station",
@@ -333,10 +334,6 @@ class Station:
         local tz database, rather than guessing one.
         """
         if not self.timezone:
-            return None
-        try:
-            from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-        except ImportError:  # pragma: no cover - Python < 3.9
             return None
         try:
             return ZoneInfo(self.timezone)
