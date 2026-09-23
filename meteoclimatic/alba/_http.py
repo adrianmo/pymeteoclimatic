@@ -158,9 +158,11 @@ def retry_after_seconds(header_value, body):
     The provider sends it as a response header and repeats it in the body as
     ``"Retry-After: N"``; the header is preferred and the body is a fallback.
 
-    A non-positive value is treated as absent rather than as a short wait, so
-    the caller falls back to the minimum block instead of recording a deadline
-    that has already passed.
+    A non-positive value is treated as absent rather than as a short wait: it
+    is discarded and the body is consulted, exactly as if the header had not
+    been sent. Only when neither source yields a usable value does the caller
+    fall back to the minimum block, instead of recording a deadline that has
+    already passed.
     """
     if header_value is not None:
         try:
@@ -170,10 +172,11 @@ def retry_after_seconds(header_value, body):
         else:
             if seconds > 0:
                 return seconds
-            # A zero or negative wait is not a shorter block, it is an
-            # unusable one: honouring it would place the deadline in the
-            # past and let the very next call reach the network.
-            return None
+            # A zero or negative wait is unusable, not a shorter block, so it
+            # is discarded. Discarding it means falling through to the body,
+            # not giving up: a stale header alongside a usable body value
+            # would otherwise cost us the real wait and let a request go out
+            # early, which is what extends the server-side penalty.
     if isinstance(body, dict):
         message = body.get("message")
         if isinstance(message, str) and ":" in message:

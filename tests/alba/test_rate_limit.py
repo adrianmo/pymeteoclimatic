@@ -297,3 +297,41 @@ class TestUnusableRetryAfterDoesNotDefeatTheBlock(unittest.TestCase):
         with self.assertRaises(RateLimitError):
             client.get_current_data("AA111")
 
+
+
+class TestUnusableHeaderStillConsultsTheBody(unittest.TestCase):
+    """Discarding a bad header must not mean discarding the body value.
+
+    The service repeats Retry-After in the response body. An earlier fix made
+    a non-positive header return immediately, which threw the body away with
+    it: a stale ``Retry-After: 0`` alongside a body value of 118 produced the
+    60-second fallback, so a request would go out 58 seconds early. Since the
+    service adds the exceeded window to the time remaining, that early request
+    lengthens the block -- the exact harm the fix was written to prevent.
+    """
+
+    def test_zero_header_falls_through_to_the_body(self):
+        self.assertEqual(
+            retry_after_seconds("0", {"message": "Retry-After: 118"}), 118)
+
+    def test_negative_header_falls_through_to_the_body(self):
+        self.assertEqual(
+            retry_after_seconds("-30", {"message": "Retry-After: 118"}), 118)
+
+    def test_unparseable_header_falls_through_to_the_body(self):
+        self.assertEqual(
+            retry_after_seconds("soon", {"message": "Retry-After: 118"}), 118)
+
+    def test_a_usable_header_still_wins_over_the_body(self):
+        self.assertEqual(
+            retry_after_seconds("45", {"message": "Retry-After: 118"}), 45)
+
+    def test_both_unusable_yields_nothing_so_the_caller_uses_the_minimum(self):
+        self.assertIsNone(
+            retry_after_seconds("0", {"message": "Retry-After: -5"}))
+        self.assertIsNone(retry_after_seconds("0", None))
+
+    def test_the_resulting_block_honours_the_body_value(self):
+        block = RateLimitBlock()
+        block.record(retry_after_seconds("0", {"message": "Retry-After: 118"}))
+        self.assertAlmostEqual(block.remaining(), 118, delta=2)
