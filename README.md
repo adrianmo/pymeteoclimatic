@@ -170,14 +170,25 @@ of confusion in weather data:
 | --- | --- | --- |
 | `temperature` | `current`, `daily_max`, `daily_min`, `average`, `delta_3h` | °C |
 | `humidity` | `current`, `daily_max`, `daily_min`, `average`, `delta_3h` | % |
-| `pressure` | `current`, `daily_max`, `daily_min`, `average`, `mean_6h`, `delta_3h`, `delta_6h`, `trend` | hPa |
-| `wind` | `speed`, `daily_gust`, `bearing`, `average_speed`, `average_bearing` | m/s, degrees |
-| `precipitation` | `daily_total`, `current`, `average`, `intensity_max`, `drought_days` | mm |
-| `solar` | `radiation`, `daily_radiation`, `average_radiation`, `uv_index`, `daily_uv_index`, `average_uv_index` | W/m², index |
-| `air_quality` | `aqi`, `pm1`, `pm10`, `pm25`, plus `daily_*_max`, `daily_*_min` and `average_*` | µg/m³ |
+| `pressure` | `current`, `daily_max`, `daily_min`, `average`, `mean_6h`, `delta_3h`, `delta_6h` | hPa |
+| `pressure` | `trend` | string enum |
+| `wind` | `speed`, `daily_gust`, `average_speed` | m/s |
+| `wind` | `bearing`, `average_bearing` | degrees (0-360) |
+| `precipitation` | `daily_total`, `current`, `average` | mm |
+| `precipitation` | `intensity_max` | **unit not confirmed** |
+| `precipitation` | `drought_days` | a count of days, not a measurement |
+| `solar` | `radiation`, `daily_radiation`, `average_radiation` | W/m² |
+| `solar` | `uv_index`, `daily_uv_index`, `average_uv_index` | UV index |
+| `air_quality` | `pm1`, `pm10`, `pm25`, plus their `daily_*_max`, `daily_*_min` and `average_*` | µg/m³ |
+| `air_quality` | `aqi` | an index, **scale not yet defined** |
+
+The rows are split by unit on purpose: a single cell covering a whole group
+would attach a unit to values that do not carry one. `drought_days` is a count,
+`aqi` is an index whose scale Meteoclimatic has not published, and the unit of
+`intensity_max` has not been confirmed.
 
 `pressure.trend` is one of `Steady`, `Rising`, `Rising Quickly`, `Falling` or
-`Falling Quickly`. The `aqi` scale is still being defined by Meteoclimatic.
+`Falling Quickly`.
 
 Wind speed and gust are metres per second. The library performs no
 conversion, so a consumer that presents kilometres per hour must convert; in
