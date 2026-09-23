@@ -52,6 +52,9 @@ CASES = [
     ("redirect", 302, "error_404.json", TransportError),
     ("no content", 204, "error_404.json", TransportError),
     ("created", 201, "error_404.json", TransportError),
+    # A 200 whose body is valid JSON but not a valid payload. Both clients
+    # must agree that this is malformed AND that it happened on a 200.
+    ("schema failure on 200", 200, "error_404.json", MalformedResponseError),
 ]
 
 

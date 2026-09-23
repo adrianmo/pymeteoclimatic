@@ -32,6 +32,7 @@ __all__ = [
     "RateLimitBlock",
     "build_headers",
     "raise_for_status",
+    "with_status",
     "retry_after_seconds",
 ]
 
@@ -216,6 +217,20 @@ def raise_for_status(status, station_code, retry_after=None):
             status=status,
         )
     raise TransportError("unexpected HTTP status %s" % (status,), status=status)
+
+
+def with_status(error, status):
+    """Attach *status* to *error* when it does not already carry one.
+
+    Both clients funnel parser failures through this, so a malformed body
+    reports the status it arrived with regardless of which stage rejected it
+    and regardless of which client made the request. Threading the status at
+    each call site instead is what let the JSON path and the schema path
+    disagree while both were nominally fixed.
+    """
+    if getattr(error, "status", None) is None:
+        error.status = status
+    return error
 
 
 def ensure_json(payload, status=None):

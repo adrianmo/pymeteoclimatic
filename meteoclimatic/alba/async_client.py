@@ -36,8 +36,13 @@ from meteoclimatic.alba._http import (
     build_headers,
     raise_for_status,
     retry_after_seconds,
+    with_status,
 )
-from meteoclimatic.alba.errors import MalformedResponseError, TransportError
+from meteoclimatic.alba.errors import (
+    ApiError,
+    MalformedResponseError,
+    TransportError,
+)
 from meteoclimatic.alba.parsing import parse_current_data
 
 _LOGGER = logging.getLogger(__name__)
@@ -107,10 +112,16 @@ class AsyncClient:
         :param station_code: the new short station code, e.g. ``T415``
         :rtype: meteoclimatic.alba.models.Observation
         """
-        payload, headers = await self._get(CURRENT_DATA_PATH, station_code)
-        return parse_current_data(
-            payload, cache_directive=headers.get("Cache-Control")
-        )
+        payload, headers, status = await self._get(
+            CURRENT_DATA_PATH, station_code)
+        try:
+            return parse_current_data(
+                payload, cache_directive=headers.get("Cache-Control")
+            )
+        except ApiError as error:
+            # The response arrived with a status; a failure while interpreting
+            # it should report that status rather than None.
+            raise with_status(error, status) from None
 
     async def _get(self, path, station_code):
         """Perform a GET request and map failures to typed errors."""
@@ -158,7 +169,7 @@ class AsyncClient:
                     "Meteoclimatic API request for station %s succeeded",
                     station_code,
                 )
-                return payload, response.headers
+                return payload, response.headers, status
         except asyncio.TimeoutError as error:
             raise TransportError("request timed out") from error
         except aiohttp.ClientError as error:
