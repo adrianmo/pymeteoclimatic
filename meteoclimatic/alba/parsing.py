@@ -155,13 +155,25 @@ def _optional_number(container, key):
     )
 
 
-def _optional_count(container, key):
-    """Return an integer count, or ``None`` when absent or null."""
+def _optional_count(container, key, field):
+    """Return an integer count, or ``None`` when absent or null.
+
+    A count that is present but not a whole number is malformed rather than
+    roundable: truncating ``29.5`` would invent a plausible value the service
+    never sent, which is exactly the kind of masking this parser avoids.
+    """
     value = container.get(key)
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        return None
+        raise MalformedResponseError(
+            "field %s is %s, expected a whole number"
+            % (field, type(value).__name__)
+        )
+    if isinstance(value, float) and not value.is_integer():
+        raise MalformedResponseError(
+            "field %s is not a whole number" % (field,)
+        )
     return int(value)
 
 
@@ -190,21 +202,37 @@ def _parse_datetime(value, field):
             "field %s is %s, expected an ISO 8601 string" % (field, type(value).__name__)
         )
     try:
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(value)
     except ValueError as error:
         raise MalformedResponseError(
             "field %s is not a valid ISO 8601 timestamp" % (field,)
         ) from error
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        # A naive timestamp cannot be placed against the station's zone, so
+        # the local civil day that every daily value depends on would be
+        # unanchored, and arithmetic against an aware timestamp would fail.
+        raise MalformedResponseError(
+            "field %s has no UTC offset; an aware timestamp is required"
+            % (field,)
+        )
+    return parsed
 
 
 def _parse_optional_datetime(value):
-    """Parse a timestamp, returning ``None`` when it is unusable."""
+    """Parse a timestamp, returning ``None`` when it is unusable.
+
+    A naive value counts as unusable. Reporting absence is safer than
+    returning a timestamp whose zone a caller would have to guess.
+    """
     if not isinstance(value, str):
         return None
     try:
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed
 
 
 def _parse_date(value, field):
@@ -246,7 +274,7 @@ def _parse_groups(wxdata):
         groups[group] = _GROUP_TYPES[group](**values)
     # Values that are not plain measurements.
     groups["pressure"].trend = _optional_text(wxdata, "bar_trend")
-    groups["precipitation"].drought_days = _optional_count(wxdata, "droughtdays")
+    groups["precipitation"].drought_days = _optional_count(wxdata, "droughtdays", "wxdata.droughtdays")
     return groups
 
 

@@ -277,3 +277,44 @@ class TestFetchedAt(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestMalformedDataIsNotMasked(unittest.TestCase):
+    """Malformed values must surface, not be quietly made plausible."""
+
+    def test_naive_updated_is_rejected(self):
+        payload = load("currentdata_full.json")
+        payload["data"]["updated"] = "2026-08-19T12:35:21"
+        with self.assertRaises(MalformedResponseError) as caught:
+            parse_current_data(payload)
+        self.assertIn("offset", str(caught.exception))
+
+    def test_offset_aware_updated_is_accepted(self):
+        payload = load("currentdata_full.json")
+        observation = parse_current_data(payload)
+        self.assertIsNotNone(observation.updated.utcoffset())
+
+    def test_naive_sunrise_is_reported_absent_rather_than_guessed(self):
+        payload = load("currentdata_full.json")
+        payload["data"]["extra"]["sunrise"] = "2026-08-19T07:09:09"
+        observation = parse_current_data(payload)
+        self.assertIsNone(observation.sun.sunrise)
+
+    def test_non_integral_count_is_rejected(self):
+        payload = load("currentdata_full.json")
+        payload["data"]["wxdata"]["droughtdays"] = 29.5
+        with self.assertRaises(MalformedResponseError):
+            parse_current_data(payload)
+
+    def test_non_numeric_count_is_rejected(self):
+        payload = load("currentdata_full.json")
+        payload["data"]["wxdata"]["droughtdays"] = "twenty nine"
+        with self.assertRaises(MalformedResponseError):
+            parse_current_data(payload)
+
+    def test_whole_number_count_still_parses(self):
+        payload = load("currentdata_full.json")
+        payload["data"]["wxdata"]["droughtdays"] = 29
+        observation = parse_current_data(payload)
+        self.assertEqual(observation.precipitation.drought_days, 29)
+
