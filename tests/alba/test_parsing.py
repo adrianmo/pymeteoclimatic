@@ -348,3 +348,66 @@ class TestTtlIsADurationNotAnIdentifier(unittest.TestCase):
 
     def test_boolean_is_not_a_duration(self):
         self.assertIsNone(self._with_ttl(True).ttl)
+
+
+class TestCountsCannotRunBackwards(unittest.TestCase):
+    """A negative count is as malformed as a fractional one.
+
+    The earlier fix rejected fractional and non-numeric counts but let a
+    negative through, so a station could report minus seven drought days.
+    That is the same failure the helper exists to prevent, reached from the
+    other side of zero.
+    """
+
+    def _with_drought_days(self, value):
+        payload = load("currentdata_full.json")
+        payload["data"]["wxdata"]["droughtdays"] = value
+        return parse_current_data(payload)
+
+    def test_negative_count_is_rejected(self):
+        with self.assertRaises(MalformedResponseError) as caught:
+            self._with_drought_days(-1)
+        self.assertIn("negative", str(caught.exception))
+
+    def test_zero_is_a_legitimate_count(self):
+        self.assertEqual(self._with_drought_days(0).precipitation.drought_days, 0)
+
+    def test_positive_count_still_parses(self):
+        self.assertEqual(self._with_drought_days(29).precipitation.drought_days, 29)
+
+    def test_negative_station_category_is_reported_absent(self):
+        payload = load("currentdata_full.json")
+        payload["data"]["mainQuality"] = -3
+        self.assertIsNone(parse_current_data(payload).quality.main)
+
+
+class TestParserFailuresCarryTheResponseStatus(unittest.TestCase):
+    """A failure while interpreting a response must report its status.
+
+    The invalid-JSON path was fixed to preserve the status a round earlier,
+    but the schema path was not, so two failures on the same 200 response
+    reported different metadata depending on which stage rejected it.
+    """
+
+    def test_schema_failure_on_a_200_reports_200(self):
+        from unittest.mock import patch
+        from meteoclimatic.alba import Client
+
+        class _Response:
+            headers = {}
+            status = 200
+
+            def read(self):
+                return b'{"status":200,"data":{}}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+        with patch("meteoclimatic.alba.client._urlopen",
+                   return_value=_Response()):
+            with self.assertRaises(MalformedResponseError) as caught:
+                Client("dummy-key").get_current_data("AA111")
+        self.assertEqual(caught.exception.status, 200)

@@ -174,6 +174,13 @@ def _optional_count(container, key, field):
         raise MalformedResponseError(
             "field %s is not a whole number" % (field,)
         )
+    if value < 0:
+        # A count of days cannot run backwards. Passing it through would
+        # expose a negative drought-day count, which is the same kind of
+        # plausible-looking nonsense this helper exists to reject.
+        raise MalformedResponseError(
+            "field %s is negative; a count cannot be" % (field,)
+        )
     return int(value)
 
 
@@ -203,11 +210,18 @@ def _optional_seconds(container, key):
 
 
 def _optional_int(container, key):
-    """Return an integer identifier, or ``None`` when absent or null."""
+    """Return an integer identifier, or ``None`` when absent or null.
+
+    Used for the station category identifiers, where ``0`` means no category
+    is assigned. A negative identifier has no meaning in that scheme, so it is
+    reported as absent rather than passed on as if it were a real category.
+    """
     value = container.get(key)
     if value is None:
         return None
     if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if value < 0:
         return None
     return value
 
