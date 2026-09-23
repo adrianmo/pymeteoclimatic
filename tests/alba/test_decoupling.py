@@ -207,3 +207,46 @@ class TestAlbaDoesNotDependOnTheLegacyTransport(unittest.TestCase):
         # fetches, which is why the message is not reused either.
         self.assertNotIn("item", str(AlbaNotFound("AA111")))
         self.assertIn("AA111", str(AlbaNotFound("AA111")))
+
+
+class TestWildcardImportDoesNotRequireTheOptionalExtra(unittest.TestCase):
+    """``import *`` must not drag in the optional HTTP stack.
+
+    Every other test in this module imports explicitly, which is exactly why
+    none of them caught this: ``AsyncClient`` was listed in ``__all__``, so a
+    wildcard import resolved it through the lazy ``__getattr__`` and raised
+    for anyone without the extra. The gap was in the tests as much as in the
+    code, so the wildcard form is now covered in its own right.
+    """
+
+    def test_async_client_is_not_in_all(self):
+        import meteoclimatic.alba as alba
+        self.assertNotIn("AsyncClient", alba.__all__)
+
+    def test_wildcard_import_succeeds_without_aiohttp(self):
+        result = run_isolated(
+            {"aiohttp"},
+            """
+            namespace = {}
+            exec("from meteoclimatic.alba import *", namespace)
+            assert "Client" in namespace
+            assert "parse_current_data" in namespace
+            assert "AsyncClient" not in namespace
+            print("ok")
+            """,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ok", result.stdout)
+
+    def test_every_exported_name_resolves_without_aiohttp(self):
+        result = run_isolated(
+            {"aiohttp"},
+            """
+            import meteoclimatic.alba as alba
+            for name in alba.__all__:
+                assert getattr(alba, name) is not None, name
+            print("ok")
+            """,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("ok", result.stdout)

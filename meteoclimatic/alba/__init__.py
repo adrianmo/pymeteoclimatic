@@ -63,9 +63,13 @@ from meteoclimatic.alba.parsing import (  # noqa: F401
     parse_current_data,
 )
 
+# ``AsyncClient`` is deliberately absent from ``__all__``. It resolves lazily
+# through ``__getattr__`` and needs the optional ``async`` extra, so listing it
+# would make ``from meteoclimatic.alba import *`` require aiohttp in order to
+# import the synchronous surface. An explicit
+# ``from meteoclimatic.alba import AsyncClient`` still works.
 __all__ = [
     "Client",
-    "AsyncClient",
     "DEFAULT_BASE_URL",
     "DEFAULT_TIMEOUT",
     "RECOMMENDED_POLL_INTERVAL",
