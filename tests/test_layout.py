@@ -6,6 +6,8 @@ move, so a regression is caught rather than discovered by a user.
 """
 
 import importlib
+import importlib.util
+import pathlib
 import subprocess
 import sys
 import textwrap
@@ -248,6 +250,71 @@ class TestMigrationComparisonHelper(unittest.TestCase):
 
         self.assertEqual(FIELD_PAIRS["wind_max"], "wind.daily_gust")
         self.assertIn("wind_max", ASSUMED_PAIRS)
+
+class TestTestFilesRunStandalone(unittest.TestCase):
+    """No test may be defined after the ``unittest.main()`` guard.
+
+    Appending a class below the guard leaves it invisible to direct
+    execution: ``unittest.main()`` runs at that point and the classes below
+    it do not exist yet. pytest imports the module instead of executing it,
+    so the guard never runs and everything is collected -- which is exactly
+    why this went unnoticed while continuous integration stayed green.
+
+    Four files had drifted this way after tests were appended to them over
+    several rounds. This check makes the next occurrence fail immediately
+    rather than quietly reduce what runs.
+    """
+
+    @staticmethod
+    def _test_modules():
+        root = pathlib.Path(__file__).resolve().parent
+        return sorted(root.rglob("test_*.py"))
+
+    def test_no_class_is_defined_after_the_main_guard(self):
+        for module in self._test_modules():
+            with self.subTest(module=module.name):
+                lines = module.read_text(encoding="utf-8").splitlines()
+                guard = next((i for i, l in enumerate(lines)
+                              if l.startswith("if __name__")), None)
+                if guard is None:
+                    continue
+                after = [i for i, l in enumerate(lines)
+                         if l.startswith("class ") and i > guard]
+                self.assertEqual(
+                    after, [],
+                    "%s defines a class after the __main__ guard, so direct "
+                    "execution would skip it" % (module.name,),
+                )
+
+    def test_direct_execution_collects_as_many_tests_as_pytest(self):
+        # The property above is structural; this one is observed. It runs a
+        # representative module as a script and compares the count with the
+        # number of test methods the loader finds.
+        import subprocess
+        import sys
+
+        module = pathlib.Path(__file__).resolve().parent / "alba" / "test_parsing.py"
+        result = subprocess.run(
+            [sys.executable, str(module)],
+            capture_output=True, text=True,
+            cwd=str(pathlib.Path(__file__).resolve().parents[1]),
+        )
+        self.assertIn("Ran ", result.stderr, result.stderr[-400:])
+        ran = int(result.stderr.split("Ran ")[1].split(" ")[0])
+
+        loader = unittest.TestLoader()
+        spec = importlib.util.spec_from_file_location("_standalone", module)
+        loaded = importlib.util.module_from_spec(spec)
+        sys.modules["_standalone"] = loaded
+        spec.loader.exec_module(loaded)
+        expected = loader.loadTestsFromModule(loaded).countTestCases()
+        del sys.modules["_standalone"]
+
+        self.assertEqual(
+            ran, expected,
+            "direct execution ran %d tests but the module defines %d"
+            % (ran, expected),
+        )
 
 
 if __name__ == "__main__":
