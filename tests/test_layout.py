@@ -213,12 +213,25 @@ class TestMigrationComparisonHelper(unittest.TestCase):
         from tests.compare import compare
         from meteoclimatic.alba import Temperature, Wind
 
+        # Wind is the one field where the two transports disagree on units:
+        # Rainbow reports km/h and Alba reports m/s. Agreement therefore means
+        # 24.1 km/h against 24.1/3.6 m/s, not against the same number. An
+        # earlier version of this test used 24.1 on both sides, which asserted
+        # that a gust and a gust 3.6 times stronger were the same reading.
         weather = self._weather(temp_current=21.5, temp_max=27.1, wind_max=24.1)
         observation = self._observation(
             temperature=Temperature(current=21.5, daily_max=27.1),
-            wind=Wind(daily_gust=24.1),
+            wind=Wind(daily_gust=24.1 / 3.6),
         )
-        self.assertEqual(compare(weather, observation), {})
+        self.assertEqual(compare(weather, observation, tolerance=1e-9), {})
+
+    def test_identical_numbers_in_different_units_are_reported(self):
+        from tests.compare import compare
+        from meteoclimatic.alba import Wind
+
+        weather = self._weather(wind_max=24.1)
+        observation = self._observation(wind=Wind(daily_gust=24.1))
+        self.assertIn("wind_max", compare(weather, observation))
 
     def test_disagreeing_values_are_reported(self):
         from tests.compare import compare

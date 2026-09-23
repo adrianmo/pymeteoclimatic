@@ -19,6 +19,10 @@ It is not shipped with the package.
 #: * ``rain`` is compared against the total accumulated since local midnight.
 #:   The RSS feed never documented its own window, so a mismatch here may mean
 #:   the periods differ rather than that a value is wrong.
+#:
+#: The two transports also disagree on units for wind: Rainbow reports km/h
+#: while Alba reports m/s, so those fields are converted before comparison
+#: and both the original and the converted value are reported on a mismatch.
 FIELD_PAIRS = {
     "temp_current": "temperature.current",
     "temp_max": "temperature.daily_max",
@@ -36,7 +40,12 @@ FIELD_PAIRS = {
 }
 
 #: Pairings that rest on an unverified assumption rather than a confirmed one.
-ASSUMED_PAIRS = ("wind_max",)
+ASSUMED_PAIRS = ("wind_max", "rain")
+
+#: Legacy fields whose Alba counterpart is in m/s while Rainbow reports km/h.
+#: Multiplying the Alba value by this factor puts both sides in km/h.
+MS_TO_KMH = 3.6
+WIND_SPEED_FIELDS = ("wind_current", "wind_max")
 
 
 def _resolve(observation, path):
@@ -68,6 +77,14 @@ def compare(rainbow_weather, alba_observation, tolerance=0.0):
         if left is None or right is None:
             differences[legacy_field] = (left, right)
             continue
-        if abs(left - right) > tolerance:
+        comparable = right
+        if legacy_field in WIND_SPEED_FIELDS:
+            # Rainbow is km/h and Alba is m/s. Comparing the raw numbers
+            # would report a constant factor-of-3.6 disagreement, or hide a
+            # real one behind numerically equal but physically different
+            # values. The reported pair keeps the value each transport
+            # actually returned, so diagnostics stay truthful.
+            comparable = right * MS_TO_KMH
+        if abs(left - comparable) > tolerance:
             differences[legacy_field] = (left, right)
     return differences
