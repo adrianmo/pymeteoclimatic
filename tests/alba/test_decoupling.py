@@ -139,3 +139,71 @@ class TestNoConsumerCoupling(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAlbaDoesNotDependOnTheLegacyTransport(unittest.TestCase):
+    """Alba must survive the deletion of the RSS transport at 1.0.
+
+    The two transports were separated so that one can be removed without
+    touching the other. That guarantee is easy to lose by accident: a single
+    import of a legacy base class would make every Alba exception depend on
+    a module scheduled for deletion, and nothing else would notice until the
+    deletion broke consumers.
+    """
+
+    LEGACY_MODULES = (
+        "meteoclimatic.exceptions",
+        "meteoclimatic.client",
+        "meteoclimatic.feed",
+        "meteoclimatic.observation",
+        "meteoclimatic.station",
+        "meteoclimatic.weather",
+    )
+
+    def test_no_alba_module_imports_a_legacy_module(self):
+        import pathlib
+        import re
+
+        root = pathlib.Path(__file__).resolve().parents[2] / "meteoclimatic" / "alba"
+        pattern = re.compile(
+            r"^\s*(?:from|import)\s+(meteoclimatic\.[A-Za-z_][A-Za-z0-9_]*)",
+            re.M,
+        )
+        offenders = {}
+        for module in sorted(root.glob("*.py")):
+            for match in pattern.finditer(module.read_text(encoding="utf-8")):
+                name = match.group(1)
+                # meteoclimatic.version is shared package metadata, not part
+                # of the RSS transport, so it survives the 1.0 removal.
+                if name.startswith("meteoclimatic.alba"):
+                    continue
+                if name == "meteoclimatic.version":
+                    continue
+                offenders.setdefault(module.name, []).append(name)
+        self.assertEqual(
+            offenders, {},
+            "Alba must not import from the legacy transport; found %r" % (offenders,),
+        )
+
+    def test_alba_errors_do_not_inherit_from_the_legacy_base(self):
+        from meteoclimatic.exceptions import MeteoclimaticError
+        from meteoclimatic.alba import (
+            ApiError, AuthenticationError, BadRequestError,
+            MalformedResponseError, RateLimitError, StationNotFound,
+            TransportError,
+        )
+        for error in (ApiError, AuthenticationError, BadRequestError,
+                      MalformedResponseError, RateLimitError,
+                      StationNotFound, TransportError):
+            with self.subTest(error=error.__name__):
+                self.assertTrue(issubclass(error, ApiError))
+                self.assertFalse(issubclass(error, MeteoclimaticError))
+
+    def test_alba_station_not_found_is_not_the_rss_one(self):
+        from meteoclimatic.alba import StationNotFound as AlbaNotFound
+        from meteoclimatic.exceptions import StationNotFound as RssNotFound
+        self.assertIsNot(AlbaNotFound, RssNotFound)
+        # The RSS message describes a feed document this transport never
+        # fetches, which is why the message is not reused either.
+        self.assertNotIn("item", str(AlbaNotFound("AA111")))
+        self.assertIn("AA111", str(AlbaNotFound("AA111")))

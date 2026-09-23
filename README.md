@@ -251,8 +251,7 @@ present and not `None`.
 
 ## Errors
 
-Everything derives from `MeteoclimaticError`, so a single `except` still catches
-all of it.
+Everything derives from `ApiError`, so a single `except` still catches all of it.
 
 | Exception | Raised when |
 | --- | --- |
@@ -260,12 +259,21 @@ all of it.
 | `StationNotFound` | Unknown, invalid or not-yet-migrated station (`404`) |
 | `RateLimitError` | A usage limit was exceeded (`429`); carries `retry_after` |
 | `BadRequestError` | Malformed request (`400`) |
-| `TransportError` | Timeout, connection failure, or server error |
+| `TransportError` | Timeout, connection failure, redirect, or server error |
 | `MalformedResponseError` | The response could not be understood |
 
 ```python
-from meteoclimatic.alba import RateLimitError, StationNotFound
+from meteoclimatic.alba import ApiError, RateLimitError, StationNotFound
 ```
+
+These are **not** the RSS transport's exceptions, even where the name is the
+same. `meteoclimatic.alba` defines its own hierarchy and imports nothing from
+the deprecated transport, so that transport can be removed at 1.0 without
+changing anything here. The practical consequence: catching
+`MeteoclimaticError` does **not** catch these — catch `ApiError` instead.
+
+`ApiError.status` carries the HTTP status that was received, and reports the
+same value whichever client you use.
 
 ## Rate limits
 

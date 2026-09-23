@@ -1,7 +1,13 @@
 """Typed errors for the Meteoclimatic API v3 transport.
 
-Every exception subclasses :class:`meteoclimatic.exceptions.MeteoclimaticError`,
-so existing callers that catch that base class keep catching every failure.
+This module is self-contained on purpose. Every exception here derives from
+:class:`ApiError` and from nothing outside this package, so the deprecated RSS
+transport can be deleted at 1.0 without touching Alba. Sharing a base class
+with the legacy transport would have made that removal a breaking change for
+Alba users, which is the opposite of why the two transports were separated.
+
+A consequence worth stating: ``except MeteoclimaticError`` does not catch these.
+Catch :class:`ApiError` instead, or a specific subclass.
 
 The mapping is keyed on the HTTP status rather than on the ``error`` or
 ``message`` text, because the provider has not confirmed that those strings are
@@ -12,12 +18,9 @@ authenticated URL, or a request header, so an error report or traceback cannot
 leak the credential.
 """
 
-from meteoclimatic.exceptions import MeteoclimaticError, StationNotFound
-
 __all__ = [
-    "MeteoclimaticError",
-    "StationNotFound",
     "ApiError",
+    "StationNotFound",
     "AuthenticationError",
     "BadRequestError",
     "RateLimitError",
@@ -26,7 +29,7 @@ __all__ = [
 ]
 
 
-class ApiError(MeteoclimaticError):
+class ApiError(Exception):
     """Base class for API v3 transport failures.
 
     :param message: human readable description, never containing a credential
@@ -37,6 +40,27 @@ class ApiError(MeteoclimaticError):
         """Initialize the class."""
         self.status = status
         super().__init__(message)
+
+
+class StationNotFound(ApiError):
+    """Raised on HTTP 404.
+
+    The station code is not known to the API. That covers an invalid code, a
+    code for a station that has not been migrated yet, and a code belonging to
+    the legacy platform rather than to this one.
+
+    This is deliberately not the RSS transport's exception of the same name.
+    That one reports that a feed "did not return any item", which describes a
+    document this transport never fetches.
+    """
+
+    def __init__(self, station_code):
+        """Initialize the class."""
+        self.station_code = station_code
+        super().__init__(
+            "station code %s is not known to the API" % (station_code,),
+            status=404,
+        )
 
 
 class AuthenticationError(ApiError):
