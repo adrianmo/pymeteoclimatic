@@ -225,8 +225,9 @@ class AirQuality(_Group):
     """Air quality index and particulate matter.
 
     Particulate values are in µg/m³. The ``aqi`` scale is still being defined by
-    Meteoclimatic, and the period of the daily and average values is not
-    confirmed.
+    Meteoclimatic, and the period covered by the ``average_`` values is not
+    confirmed. The ``daily_`` values cover the station's local civil day, as
+    every ``daily_`` value in this model does.
 
     Not every station has air-quality hardware; those report ``None``.
     """
