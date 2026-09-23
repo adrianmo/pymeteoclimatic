@@ -1,6 +1,6 @@
 """Synchronous Meteoclimatic API v3 client, built on the standard library.
 
-This is the default client. It adds no third-party dependency, so the library
+This is the default client. It imports no third-party package, so the library
 remains usable in a plain script:
 
     from meteoclimatic.alba import Client

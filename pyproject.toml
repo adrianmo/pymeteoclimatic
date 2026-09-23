@@ -28,8 +28,9 @@ classifiers = [
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Libraries",
 ]
-# The normalized model, parser and synchronous client need no third-party
-# code. lxml and beautifulsoup4 are required only by the deprecated RSS
+# The normalized model, parser and synchronous client IMPORT no third-party
+# package. That is not the same as installing none: until 1.0 the entries
+# below are installed by default. lxml and beautifulsoup4 are required only by the deprecated RSS
 # transport and are removed together with it at 1.0.
 #
 # tzdata carries no code: it is the IANA time-zone database that zoneinfo

@@ -25,7 +25,7 @@ __all__ = [
 ]
 
 # Names that resolve lazily, mapped to the module that provides them. Resolving
-# on first access keeps the dependency-free Alba core importable without
+# on first access keeps the Alba core importable, without third-party imports,
 # BeautifulSoup, which the RSS transport requires.
 _LAZY = {
     "Client": ("meteoclimatic.alba", "Client"),

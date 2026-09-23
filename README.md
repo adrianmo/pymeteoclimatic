@@ -63,8 +63,19 @@ data from somewhere else.
 $ pip install pymeteoclimatic
 ```
 
-The Alba model, parser and synchronous client use only the Python standard
-library. If you want the asynchronous client, install the optional extra:
+The Alba model, parser and synchronous client **import** only the Python
+standard library, so nothing third-party is loaded at runtime unless you reach
+for it.
+
+That is a statement about imports, not about what pip installs. Until 1.0 a
+default install also brings `lxml` and `beautifulsoup4`, which only the
+deprecated RSS transport uses and which are removed together with it, and
+`tzdata`, which `zoneinfo` falls back on where the operating system ships no
+time-zone database. If it did not, a valid station zone would silently resolve
+to `None` and the local civil day that every `daily_` value is keyed to would
+be uncomputable.
+
+If you want the asynchronous client, install the optional extra:
 
 ```
 $ pip install pymeteoclimatic[async]
