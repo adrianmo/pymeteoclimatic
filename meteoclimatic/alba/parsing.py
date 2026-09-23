@@ -177,6 +177,31 @@ def _optional_count(container, key, field):
     return int(value)
 
 
+def _optional_seconds(container, key):
+    """Return a duration in seconds, or ``None`` when absent or unusable.
+
+    A duration is not an identifier. The service is not consistent about
+    sending whole numbers as ``int`` or ``float``, and reading a ttl of
+    ``226.0`` as absent would silently remove ``expires_at`` and
+    ``seconds_until_refresh`` even though the field was present. A
+    whole-number float is returned as an ``int`` so the common case keeps a
+    stable type. A negative duration is unusable rather than short, for the
+    same reason a negative Retry-After is.
+    """
+    value = container.get(key)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if value != value or value in (float("inf"), float("-inf")):
+        return None
+    if value < 0:
+        return None
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
+
+
 def _optional_int(container, key):
     """Return an integer identifier, or ``None`` when absent or null."""
     value = container.get(key)
@@ -337,7 +362,7 @@ def parse_current_data(payload, fetched_at=None, cache_directive=None):
         updated=_parse_datetime(data.get("updated"), "data.updated"),
         fetched_at=fetched_at or datetime.now(timezone.utc),
         local_day=_parse_date(wxdata.get("local_day"), "wxdata.local_day"),
-        ttl=_optional_int(data, "ttl"),
+        ttl=_optional_seconds(data, "ttl"),
         quality=Quality(
             main=_optional_int(data, "mainQuality"),
             additional=_optional_int(data, "additionalQuality"),

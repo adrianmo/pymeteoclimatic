@@ -318,3 +318,33 @@ class TestMalformedDataIsNotMasked(unittest.TestCase):
         observation = parse_current_data(payload)
         self.assertEqual(observation.precipitation.drought_days, 29)
 
+
+
+class TestTtlIsADurationNotAnIdentifier(unittest.TestCase):
+    """A ttl sent as a float must not silently disable scheduling."""
+
+    def _with_ttl(self, value):
+        payload = load("currentdata_full.json")
+        payload["data"]["ttl"] = value
+        return parse_current_data(payload)
+
+    def test_integer_ttl_is_preserved(self):
+        self.assertEqual(self._with_ttl(226).ttl, 226)
+
+    def test_whole_number_float_is_accepted_as_an_integer(self):
+        observation = self._with_ttl(226.0)
+        self.assertEqual(observation.ttl, 226)
+        self.assertIsNotNone(observation.expires_at)
+        self.assertIsNotNone(observation.seconds_until_refresh())
+
+    def test_fractional_ttl_is_kept_rather_than_discarded(self):
+        self.assertEqual(self._with_ttl(226.5).ttl, 226.5)
+
+    def test_negative_ttl_is_unusable(self):
+        self.assertIsNone(self._with_ttl(-5).ttl)
+
+    def test_non_numeric_ttl_is_unusable(self):
+        self.assertIsNone(self._with_ttl("soon").ttl)
+
+    def test_boolean_is_not_a_duration(self):
+        self.assertIsNone(self._with_ttl(True).ttl)
