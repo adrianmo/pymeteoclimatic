@@ -29,11 +29,20 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
 ]
 # The normalized model, parser and synchronous client need no third-party
-# package. lxml and beautifulsoup4 are required only by the deprecated RSS
+# code. lxml and beautifulsoup4 are required only by the deprecated RSS
 # transport and are removed together with it at 1.0.
+#
+# tzdata carries no code: it is the IANA time-zone database that zoneinfo
+# falls back on when the operating system does not ship one, which is the
+# case on Windows and on slim container images. Without it a valid station
+# zone silently resolves to None, and the daily extremes and precipitation
+# total are keyed to the station's local civil day, so that silence would
+# be a wrong answer rather than a missing one. zoneinfo prefers system data
+# when it exists, so this is a fallback and never an override.
 dependencies = [
     "lxml>=4.5",
     "beautifulsoup4>=4.9",
+    "tzdata>=2024.1",
 ]
 
 [project.optional-dependencies]
