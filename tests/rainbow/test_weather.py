@@ -34,11 +34,11 @@ class TestWeather:
         ('humidity_max', 101.0, 'humidity must be between 0 and 100'),
         ('humidity_min', -1.0, 'humidity must be between 0 and 100'),
         ('humidity_min', 101.0, 'humidity must be between 0 and 100'),
-        ('wind_current', -1.0, 'wind must be greater than 0'),
-        ('wind_max', -1.0, 'wind must be greater than 0'),
+        ('wind_current', -1.0, 'wind must not be negative'),
+        ('wind_max', -1.0, 'wind must not be negative'),
         ('wind_bearing', -0.1, 'wind bearing must be between 0 and 360'),
         ('wind_bearing', 360.1, 'wind bearing must be between 0 and 360'),
-        ('rain', -1.0, 'rain must be greater than 0')
+        ('rain', -1.0, 'rain must not be negative')
     ])
     def test_init_fails_when_wrong_data_provided(self, field_name, field_value, expected_error):
         d1 = self._test_dict.copy()
