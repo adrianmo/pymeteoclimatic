@@ -150,6 +150,17 @@ class Client:
                 "transport failure: %s" % (type(error).__name__,)
             ) from error
 
+        if status != 200:
+            # urllib raises only for 4xx and 5xx, so a 201 or 204 arrives here
+            # looking like success. The asynchronous client requires exactly
+            # 200, and parsing an unexpected 2xx body would report it as
+            # malformed rather than as the unexpected status it is.
+            _LOGGER.debug(
+                "Meteoclimatic API returned HTTP %s for station %s",
+                status, station_code,
+            )
+            raise_for_status(status, station_code)
+
         _LOGGER.debug(
             "Meteoclimatic API request for station %s succeeded", station_code
         )

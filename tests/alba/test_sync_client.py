@@ -251,3 +251,41 @@ class TestErrorMetadataMatchesTheAsyncClient(unittest.TestCase):
                 client.get_current_data("AA111")
         self.assertNotIn(SECRET, str(caught.exception))
 
+
+
+class TestOnlyTwoHundredIsSuccess(unittest.TestCase):
+    """urllib raises only for 4xx and 5xx, so a 2xx must be checked here.
+
+    A 201 or 204 arrives looking like success. Parsing its body would report
+    an unexpected status as a malformed response, and the asynchronous client
+    already required exactly 200, so the two clients disagreed about the same
+    response.
+    """
+
+    def _status(self, status, body=b'{"status":200,"data":{}}'):
+        client = Client(SECRET)
+        with patch("meteoclimatic.alba.client._urlopen",
+                   return_value=FakeResponse(body, status=status)):
+            with self.assertRaises(TransportError) as caught:
+                client.get_current_data("AA111")
+        return caught.exception
+
+    def test_no_content_is_not_success(self):
+        self.assertEqual(self._status(204, b"").status, 204)
+
+    def test_created_is_not_success(self):
+        self.assertEqual(self._status(201).status, 201)
+
+    def test_the_message_names_the_status(self):
+        self.assertIn("204", str(self._status(204, b"")))
+
+    def test_the_credential_is_absent_from_that_error(self):
+        self.assertNotIn(SECRET, str(self._status(204, b"")))
+
+    def test_two_hundred_is_still_success(self):
+        client = Client(SECRET)
+        with patch("meteoclimatic.alba.client._urlopen",
+                   return_value=FakeResponse(raw("currentdata_full.json"),
+                                             status=200)):
+            observation = client.get_current_data("AA111")
+        self.assertEqual(observation.station.code, "AA111")
