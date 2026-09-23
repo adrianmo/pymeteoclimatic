@@ -91,7 +91,7 @@ class Weather:
 
         for wind in [wind_current, wind_max]:
             if wind is not None and wind < 0.0:
-                raise ValueError("wind must be greatear than 0")
+                raise ValueError("wind must be greater than 0")
         self.wind_current = wind_current
         self.wind_max = wind_max
 
@@ -100,7 +100,7 @@ class Weather:
         self.wind_bearing = wind_bearing
 
         if rain is not None and rain < 0.0:
-            raise ValueError("rain must be greatear than 0")
+            raise ValueError("rain must be greater than 0")
         self.rain = rain
 
     def __eq__(self, other):

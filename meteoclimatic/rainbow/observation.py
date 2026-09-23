@@ -66,7 +66,7 @@ class Observation:
             condition = Condition(condition_str)
         except ValueError:
             logging.info(
-                "Unrecognized condidition '%s', using literal value instead of meteoclimatic.Condition" % (condition_str, ))
+                "Unrecognized condition '%s', using literal value instead of meteoclimatic.Condition" % (condition_str, ))
             condition = condition_str
         temp_current = helper.get_float("temp_current")
         temp_max = helper.get_float("temp_max")
