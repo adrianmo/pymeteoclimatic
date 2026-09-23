@@ -4,7 +4,7 @@ This package is independent of any particular consumer or HTTP stack, and has
 three layers:
 
 * :mod:`meteoclimatic.alba.models` and :mod:`meteoclimatic.alba.parsing` are the
-  model and the parser. They have **no third-party dependency**, so an
+  model and the parser. They **import** no third-party package, so an
   application can drive them with whatever HTTP client it already uses.
 * :class:`Client` is a synchronous client built on the standard library. It is
   the default and adds no dependency.
@@ -98,14 +98,21 @@ __all__ = [
 ]
 
 
+#: Names resolved on demand by ``__getattr__``. Kept out of ``__all__`` so a
+#: wildcard import never needs the optional extra, and listed in ``__dir__``
+#: so the surface stays discoverable.
+_LAZY = ("AsyncClient",)
+
+
 def __getattr__(name):
     """Resolve the asynchronous client lazily.
 
     Importing it eagerly would make aiohttp a hard requirement of this package,
-    defeating the dependency-free core. Callers that never touch the
+    making aiohttp an import-time requirement of this package. Callers that
+    never touch the
     asynchronous client never need the extra installed.
     """
-    if name == "AsyncClient":
+    if name in _LAZY:
         try:
             from meteoclimatic.alba.async_client import AsyncClient
         except ImportError as error:  # pragma: no cover - depends on install
@@ -118,5 +125,11 @@ def __getattr__(name):
 
 
 def __dir__():
-    """Include the lazily resolved names in ``dir()``."""
-    return sorted(set(globals()) | set(__all__))
+    """Include the lazily resolved names in ``dir()``.
+
+    ``_LAZY`` is deliberately outside ``__all__`` so that a wildcard import
+    does not drag in the optional extra, but leaving it out of ``dir()`` as
+    well would make the asynchronous client undiscoverable by introspection.
+    Discoverability and wildcard safety are separate concerns.
+    """
+    return sorted(set(globals()) | set(__all__) | set(_LAZY))
