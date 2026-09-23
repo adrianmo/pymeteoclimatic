@@ -275,9 +275,22 @@ def _parse_optional_datetime(value):
 
 
 def _parse_date(value, field):
-    """Parse a plain ``YYYY-MM-DD`` local civil date."""
-    if value is None or not isinstance(value, str):
+    """Parse a plain ``YYYY-MM-DD`` local civil date.
+
+    A value of the wrong type is rejected rather than reported as absent. The
+    helper already raises for a string it cannot parse, so returning ``None``
+    for a non-string made it inconsistent with itself: identical badness gave
+    a loud answer or a silent one depending on the type. It matters here more
+    than elsewhere, because this is the local civil day that every ``daily_``
+    value is keyed to.
+    """
+    if value is None:
         return None
+    if not isinstance(value, str):
+        raise MalformedResponseError(
+            "field %s is %s, expected a YYYY-MM-DD string"
+            % (field, type(value).__name__)
+        )
     try:
         return date.fromisoformat(value)
     except ValueError as error:
@@ -320,8 +333,11 @@ def _parse_groups(wxdata):
 def _parse_station(data):
     """Build a :class:`Station` from a ``data`` object."""
     code = data.get("stationCode")
-    if not code:
+    # Truthiness alone accepted an integer and a run of spaces, either of
+    # which would become a station identity that never matches anything.
+    if not isinstance(code, str) or not code.strip():
         raise MalformedResponseError("'data' has no usable stationCode")
+    code = code.strip()
 
     webcam = data.get("webcam")
     if isinstance(webcam, dict):
