@@ -22,7 +22,7 @@ import logging
 import socket
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from meteoclimatic.version import __version__
 from meteoclimatic.alba._http import (
@@ -38,6 +38,31 @@ from meteoclimatic.alba.errors import MalformedResponseError, TransportError
 from meteoclimatic.alba.parsing import parse_current_data
 
 _LOGGER = logging.getLogger(__name__)
+
+
+class _NoRedirects(HTTPRedirectHandler):
+    """Refuse HTTP redirects instead of following them.
+
+    ``urllib`` copies the original request headers onto a redirected request,
+    so following a 3xx would send the ``APIkey`` header to whatever host the
+    response names. Returning ``None`` here leaves the 3xx to surface as an
+    error, which both clients then map to a transport failure.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        """Return ``None`` so that no redirect is ever followed."""
+        return None
+
+
+#: Opener used for every request. Built once, and deliberately not
+#: ``urllib.request.urlopen``, whose default handler follows redirects.
+_OPENER = build_opener(_NoRedirects)
+
+
+def _urlopen(request, timeout):
+    """Send *request* without following redirects."""
+    return _OPENER.open(request, timeout=timeout)
+
 
 __all__ = ["Client"]
 
@@ -100,7 +125,7 @@ class Client:
         )
 
         try:
-            with urlopen(request, timeout=self._timeout) as response:
+            with _urlopen(request, self._timeout) as response:
                 body = response.read()
                 headers = response.headers
         except HTTPError as error:

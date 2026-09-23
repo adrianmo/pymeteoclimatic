@@ -63,7 +63,7 @@ def rate_limited(retry_after="118"):
 
 class TestBlockPreventsFurtherRequests(unittest.TestCase):
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_second_request_does_not_reach_the_network(self, mock_urlopen):
         client = Client(SECRET)
         mock_urlopen.side_effect = rate_limited()
@@ -78,7 +78,7 @@ class TestBlockPreventsFurtherRequests(unittest.TestCase):
         self.assertEqual(mock_urlopen.call_count, 1)
         self.assertGreater(caught.exception.retry_after, 0)
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_multiple_stations_sharing_one_client_are_protected(self, mock_urlopen):
         """The scenario of several stations configured with the same API key.
 
@@ -100,7 +100,7 @@ class TestBlockPreventsFurtherRequests(unittest.TestCase):
         # None of the other stations sent a request.
         self.assertEqual(mock_urlopen.call_count, 1)
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_separate_clients_do_not_share_a_block(self, mock_urlopen):
         """Honest limitation: one client per station protects only that station.
 
@@ -119,7 +119,7 @@ class TestBlockPreventsFurtherRequests(unittest.TestCase):
 
         self.assertEqual(mock_urlopen.call_count, 2)
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_requests_resume_once_the_block_expires(self, mock_urlopen):
         client = Client(SECRET)
         mock_urlopen.side_effect = rate_limited("1")
@@ -136,7 +136,7 @@ class TestBlockPreventsFurtherRequests(unittest.TestCase):
         self.assertEqual(observation.temperature.current, 21.5)
         self.assertIsNone(client.blocked_until)
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_blocked_until_is_inspectable(self, mock_urlopen):
         client = Client(SECRET)
         self.assertIsNone(client.blocked_until)
@@ -170,7 +170,7 @@ class TestRateLimitBlock(unittest.TestCase):
 
 class TestLogging(unittest.TestCase):
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_rate_limit_is_logged_as_a_warning(self, mock_urlopen):
         """A 429 is otherwise invisible to the operator."""
         mock_urlopen.side_effect = rate_limited()
@@ -180,7 +180,7 @@ class TestLogging(unittest.TestCase):
         joined = "\n".join(logs.output)
         self.assertIn("rate limit", joined.lower())
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_logs_never_contain_the_credential(self, mock_urlopen):
         mock_urlopen.side_effect = rate_limited()
         with self.assertLogs("meteoclimatic", level="DEBUG") as logs:
@@ -188,7 +188,7 @@ class TestLogging(unittest.TestCase):
                 Client(SECRET).get_current_data("AA111")
         self.assertNotIn(SECRET, "\n".join(logs.output))
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_successful_request_logs_only_at_debug(self, mock_urlopen):
         mock_urlopen.return_value = FakeResponse(raw("currentdata_full.json"))
         logger = logging.getLogger("meteoclimatic.alba.client")

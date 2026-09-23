@@ -13,6 +13,7 @@ import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError, URLError
 
+from meteoclimatic.alba.client import _NoRedirects, _OPENER
 from meteoclimatic.alba import (
     AuthenticationError,
     BadRequestError,
@@ -66,7 +67,7 @@ def http_error(status, fixture, headers=None):
 
 class TestCredentialSafety(unittest.TestCase):
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_key_is_sent_as_header_never_in_url(self, mock_urlopen):
         mock_urlopen.return_value = FakeResponse(raw("currentdata_full.json"))
 
@@ -84,7 +85,7 @@ class TestCredentialSafety(unittest.TestCase):
         self.assertNotIn(SECRET, str(client))
         self.assertIn("redacted", repr(client))
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_errors_never_carry_the_key(self, mock_urlopen):
         mock_urlopen.side_effect = http_error(401, "error_401.json")
         with self.assertRaises(AuthenticationError) as caught:
@@ -101,57 +102,57 @@ class TestErrorMapping(unittest.TestCase):
     def setUp(self):
         self.client = Client(SECRET)
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_401_maps_to_authentication_error(self, mock_urlopen):
         mock_urlopen.side_effect = http_error(401, "error_401.json")
         with self.assertRaises(AuthenticationError):
             self.client.get_current_data("AA111")
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_404_maps_to_station_not_found(self, mock_urlopen):
         mock_urlopen.side_effect = http_error(404, "error_404.json")
         with self.assertRaises(StationNotFound) as caught:
             self.client.get_current_data("AA111")
         self.assertEqual(caught.exception.station_code, "AA111")
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_400_maps_to_bad_request(self, mock_urlopen):
         mock_urlopen.side_effect = http_error(400, "error_400.json")
         with self.assertRaises(BadRequestError):
             self.client.get_current_data("AA111")
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_429_reads_retry_after_from_body(self, mock_urlopen):
         mock_urlopen.side_effect = http_error(429, "error_429.json")
         with self.assertRaises(RateLimitError) as caught:
             self.client.get_current_data("AA111")
         self.assertEqual(caught.exception.retry_after, 118)
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_500_maps_to_transport_error(self, mock_urlopen):
         mock_urlopen.side_effect = http_error(500, "error_401.json")
         with self.assertRaises(TransportError):
             self.client.get_current_data("AA111")
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_timeout_maps_to_transport_error(self, mock_urlopen):
         mock_urlopen.side_effect = socket.timeout()
         with self.assertRaises(TransportError):
             self.client.get_current_data("AA111")
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_connection_failure_maps_to_transport_error(self, mock_urlopen):
         mock_urlopen.side_effect = URLError("unreachable")
         with self.assertRaises(TransportError):
             self.client.get_current_data("AA111")
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_invalid_json_maps_to_malformed_response(self, mock_urlopen):
         mock_urlopen.return_value = FakeResponse(b"not json")
         with self.assertRaises(MalformedResponseError):
             self.client.get_current_data("AA111")
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_no_rss_fallback_on_failure(self, mock_urlopen):
         """A failure must never reach the legacy RSS feed."""
         mock_urlopen.side_effect = http_error(500, "error_401.json")
@@ -165,7 +166,7 @@ class TestErrorMapping(unittest.TestCase):
 
 class TestRequests(unittest.TestCase):
 
-    @patch("meteoclimatic.alba.client.urlopen", autospec=True)
+    @patch("meteoclimatic.alba.client._urlopen", autospec=True)
     def test_current_data_is_parsed(self, mock_urlopen):
         mock_urlopen.return_value = FakeResponse(
             raw("currentdata_full.json"), {"Cache-Control": "no-store"}
@@ -182,3 +183,41 @@ class TestRequests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRedirectsAreRefused(unittest.TestCase):
+    """A redirect must never carry the credential to another host.
+
+    ``urllib`` copies request headers onto a redirected request, so following
+    a 3xx would disclose the ``APIkey`` header to the host named by the
+    response. The asynchronous client already refuses redirects; these tests
+    pin the same property for the synchronous one.
+    """
+
+    def test_opener_never_follows_a_redirect(self):
+        handler = _NoRedirects()
+        self.assertIsNone(
+            handler.redirect_request(
+                None, None, 302, "Found", {},
+                "https://elsewhere.invalid/v3/station/currentdata",
+            )
+        )
+
+    def test_opener_is_built_with_the_non_redirecting_handler(self):
+        self.assertTrue(
+            any(isinstance(h, _NoRedirects) for h in _OPENER.handlers),
+            "the module opener must install the non-redirecting handler",
+        )
+
+    def test_redirect_surfaces_as_a_transport_error(self):
+        client = Client(SECRET)
+        with patch(
+            "meteoclimatic.alba.client._urlopen",
+            side_effect=http_error(302, "error_404.json"),
+        ):
+            with self.assertRaises(TransportError) as caught:
+                client.get_current_data("AA111")
+        message = str(caught.exception)
+        self.assertIn("redirect", message)
+        self.assertNotIn(SECRET, message)
+

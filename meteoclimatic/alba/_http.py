@@ -183,6 +183,17 @@ def raise_for_status(status, station_code, retry_after=None):
         raise RateLimitError(retry_after)
     if status == 400:
         raise BadRequestError()
+    if 300 <= status < 400:
+        # Never followed. The credential travels in a request header, so
+        # following a redirect would disclose it to whatever host the
+        # response names. Surfacing it also makes a change of service
+        # address visible instead of silently transparent.
+        raise TransportError(
+            "the service returned a redirect (HTTP %s), which is not "
+            "followed because the credential is sent as a request header"
+            % (status,),
+            status=status,
+        )
     raise TransportError("unexpected HTTP status %s" % (status,), status=status)
 
 
