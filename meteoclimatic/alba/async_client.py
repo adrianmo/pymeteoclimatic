@@ -105,7 +105,7 @@ class AsyncClient:
         """Return the latest observation for *station_code*.
 
         :param station_code: the new short station code, e.g. ``T415``
-        :rtype: meteoclimatic.alba.models.ApiObservation
+        :rtype: meteoclimatic.alba.models.Observation
         """
         payload, headers = await self._get(CURRENT_DATA_PATH, station_code)
         return parse_current_data(

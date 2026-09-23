@@ -142,7 +142,7 @@ observation.air_quality.pm25           # 6.8
 
 | Attribute | Description |
 | --- | --- |
-| `station` | Code, legacy code, name, time zone, coordinates, webcam |
+| `station` | Code, name, time zone, coordinates, elevation, webcam |
 | `temperature`, `humidity`, `pressure`, `wind`, `precipitation`, `solar`, `air_quality` | The measurement groups |
 | `updated` | The station's observation timestamp, with an explicit UTC offset |
 | `local_day` | The station's local civil day |

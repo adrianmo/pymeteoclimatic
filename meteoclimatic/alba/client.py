@@ -7,7 +7,7 @@ remains usable in a plain script:
 
     client = Client(api_key)
     observation = client.get_current_data("T415")
-    print(observation.weather.temp_current)
+    print(observation.temperature.current)
 
 Asynchronous callers should use
 :class:`meteoclimatic.alba.AsyncClient`, which requires the
@@ -72,7 +72,7 @@ class Client:
         """Return the latest observation for *station_code*.
 
         :param station_code: the new short station code, e.g. ``T415``
-        :rtype: meteoclimatic.alba.models.ApiObservation
+        :rtype: meteoclimatic.alba.models.Observation
         """
         payload, headers = self._get(CURRENT_DATA_PATH, station_code)
         return parse_current_data(
