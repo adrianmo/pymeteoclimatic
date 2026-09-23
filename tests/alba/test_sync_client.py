@@ -41,9 +41,12 @@ def raw(name):
 class FakeResponse:
     """Minimal stand-in for the object returned by ``urlopen``."""
 
-    def __init__(self, body, headers=None):
+    def __init__(self, body, headers=None, status=200):
         self._body = body
         self.headers = headers or {}
+        # The real response carries the HTTP status; the client reads it so
+        # that a malformed body reports the same metadata as the async path.
+        self.status = status
 
     def read(self):
         return self._body
@@ -220,4 +223,31 @@ class TestRedirectsAreRefused(unittest.TestCase):
         message = str(caught.exception)
         self.assertIn("redirect", message)
         self.assertNotIn(SECRET, message)
+
+
+class TestErrorMetadataMatchesTheAsyncClient(unittest.TestCase):
+    """Both transports must report the same metadata for the same failure.
+
+    ``ApiError.status`` is documented as the HTTP status that was received.
+    The synchronous client used to drop it when a 200 response carried
+    invalid JSON, so the same fault produced ``status=None`` here and
+    ``status=200`` on the asynchronous client, and a caller branching on it
+    behaved differently depending on which client it happened to use.
+    """
+
+    def test_malformed_body_on_a_200_reports_that_status(self):
+        client = Client(SECRET)
+        with patch("meteoclimatic.alba.client._urlopen",
+                   return_value=FakeResponse(b"{not json", status=200)):
+            with self.assertRaises(MalformedResponseError) as caught:
+                client.get_current_data("AA111")
+        self.assertEqual(caught.exception.status, 200)
+
+    def test_the_credential_is_still_absent_from_that_error(self):
+        client = Client(SECRET)
+        with patch("meteoclimatic.alba.client._urlopen",
+                   return_value=FakeResponse(b"{not json", status=200)):
+            with self.assertRaises(MalformedResponseError) as caught:
+                client.get_current_data("AA111")
+        self.assertNotIn(SECRET, str(caught.exception))
 

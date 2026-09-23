@@ -128,6 +128,7 @@ class Client:
             with _urlopen(request, self._timeout) as response:
                 body = response.read()
                 headers = response.headers
+                status = response.status
         except HTTPError as error:
             body = self._safe_read(error)
             retry_after = retry_after_seconds(
@@ -152,16 +153,22 @@ class Client:
         _LOGGER.debug(
             "Meteoclimatic API request for station %s succeeded", station_code
         )
-        return self._decode(body), headers
+        return self._decode(body, status), headers
 
     @staticmethod
-    def _decode(body):
-        """Decode a JSON body, or raise a malformed-response error."""
+    def _decode(body, status=None):
+        """Decode a JSON body, or raise a malformed-response error.
+
+        The status is threaded through so that a malformed body reports the
+        same metadata here as it does on the asynchronous client. Without it
+        the two transports disagreed about ``ApiError.status`` for an
+        identical failure.
+        """
         try:
             return json.loads(body)
         except (ValueError, TypeError) as error:
             raise MalformedResponseError(
-                "response body is not valid JSON"
+                "response body is not valid JSON", status=status
             ) from error
 
     @staticmethod

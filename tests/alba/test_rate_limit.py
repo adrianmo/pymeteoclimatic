@@ -41,9 +41,12 @@ def load(name):
 
 
 class FakeResponse:
-    def __init__(self, body, headers=None):
+    def __init__(self, body, headers=None, status=200):
         self._body = body
         self.headers = headers or {}
+        # The real response carries the HTTP status; the client reads it so
+        # that a malformed body reports the same metadata as the async path.
+        self.status = status
 
     def read(self):
         return self._body
