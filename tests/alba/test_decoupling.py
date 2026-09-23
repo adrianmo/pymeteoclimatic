@@ -137,9 +137,6 @@ class TestNoConsumerCoupling(unittest.TestCase):
             )
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class TestAlbaDoesNotDependOnTheLegacyTransport(unittest.TestCase):
     """Alba must survive the deletion of the RSS transport at 1.0.
@@ -250,3 +247,7 @@ class TestWildcardImportDoesNotRequireTheOptionalExtra(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("ok", result.stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

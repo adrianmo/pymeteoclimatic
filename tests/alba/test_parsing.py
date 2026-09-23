@@ -275,9 +275,6 @@ class TestFetchedAt(unittest.TestCase):
         self.assertEqual(observation.fetched_at, moment)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class TestMalformedDataIsNotMasked(unittest.TestCase):
     """Malformed values must surface, not be quietly made plausible."""
@@ -411,3 +408,7 @@ class TestParserFailuresCarryTheResponseStatus(unittest.TestCase):
             with self.assertRaises(MalformedResponseError) as caught:
                 Client("dummy-key").get_current_data("AA111")
         self.assertEqual(caught.exception.status, 200)
+
+
+if __name__ == "__main__":
+    unittest.main()

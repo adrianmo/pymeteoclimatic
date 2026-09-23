@@ -246,9 +246,6 @@ class TestTtlHint(unittest.TestCase):
         self.assertFalse(hasattr(Client, "poll"))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class TestUnusableRetryAfterDoesNotDefeatTheBlock(unittest.TestCase):
     """A non-positive Retry-After must not become a block that has expired.
@@ -335,3 +332,7 @@ class TestUnusableHeaderStillConsultsTheBody(unittest.TestCase):
         block = RateLimitBlock()
         block.record(retry_after_seconds("0", {"message": "Retry-After: 118"}))
         self.assertAlmostEqual(block.remaining(), 118, delta=2)
+
+
+if __name__ == "__main__":
+    unittest.main()

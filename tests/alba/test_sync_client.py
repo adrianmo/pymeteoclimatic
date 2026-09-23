@@ -184,9 +184,6 @@ class TestRequests(unittest.TestCase):
             Client(SECRET).get_current_data("")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class TestRedirectsAreRefused(unittest.TestCase):
     """A redirect must never carry the credential to another host.
@@ -289,3 +286,7 @@ class TestOnlyTwoHundredIsSuccess(unittest.TestCase):
                                              status=200)):
             observation = client.get_current_data("AA111")
         self.assertEqual(observation.station.code, "AA111")
+
+
+if __name__ == "__main__":
+    unittest.main()
