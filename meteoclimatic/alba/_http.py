@@ -98,7 +98,14 @@ class RateLimitBlock:
         :param retry_after: seconds reported by the provider; when it is missing
             the smallest documented window is assumed
         """
-        seconds = retry_after if retry_after else MINIMUM_BLOCK_SECONDS
+        # Guard the value as well as parse it. A non-positive wait would put
+        # the deadline in the past, so the next request would go straight out
+        # during an active block -- and the provider adds the exceeded window
+        # to the time still remaining, so that request makes the block longer.
+        if not retry_after or retry_after <= 0:
+            seconds = MINIMUM_BLOCK_SECONDS
+        else:
+            seconds = retry_after
         previous = self.remaining()
         # The provider's value already accounts for any penalty it applied, so
         # the longer of the two deadlines is the safe one to honor.
@@ -150,17 +157,28 @@ def retry_after_seconds(header_value, body):
 
     The provider sends it as a response header and repeats it in the body as
     ``"Retry-After: N"``; the header is preferred and the body is a fallback.
+
+    A non-positive value is treated as absent rather than as a short wait, so
+    the caller falls back to the minimum block instead of recording a deadline
+    that has already passed.
     """
     if header_value is not None:
         try:
-            return int(header_value)
+            seconds = int(header_value)
         except (TypeError, ValueError):
             pass
+        else:
+            if seconds > 0:
+                return seconds
+            # A zero or negative wait is not a shorter block, it is an
+            # unusable one: honouring it would place the deadline in the
+            # past and let the very next call reach the network.
+            return None
     if isinstance(body, dict):
         message = body.get("message")
         if isinstance(message, str) and ":" in message:
             candidate = message.split(":", 1)[1].strip()
-            if candidate.isdigit():
+            if candidate.isdigit() and int(candidate) > 0:
                 return int(candidate)
     return None
 

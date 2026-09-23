@@ -20,7 +20,11 @@ from meteoclimatic.alba import (
     RateLimitError,
     parse_current_data,
 )
-from meteoclimatic.alba._http import MINIMUM_BLOCK_SECONDS, RateLimitBlock
+from meteoclimatic.alba._http import (
+    MINIMUM_BLOCK_SECONDS,
+    RateLimitBlock,
+    retry_after_seconds,
+)
 
 FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures")
 SECRET = "super-secret-api-identifier"
@@ -241,3 +245,52 @@ class TestTtlHint(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestUnusableRetryAfterDoesNotDefeatTheBlock(unittest.TestCase):
+    """A non-positive Retry-After must not become a block that has expired.
+
+    This is the failure that matters most here. The provider adds the exceeded
+    window to the time still remaining when a request arrives during a block,
+    so a client that mistakes a bad header for "wait -30 seconds" does not
+    merely fail to protect itself: the request it then sends makes the block
+    longer. One malformed header would defeat the whole mechanism.
+    """
+
+    def test_negative_header_is_treated_as_absent(self):
+        self.assertIsNone(retry_after_seconds("-30", None))
+
+    def test_zero_header_is_treated_as_absent(self):
+        self.assertIsNone(retry_after_seconds("0", None))
+
+    def test_negative_value_in_the_body_is_treated_as_absent(self):
+        self.assertIsNone(
+            retry_after_seconds(None, {"message": "Retry-After: -5"}))
+
+    def test_positive_header_is_still_honoured(self):
+        self.assertEqual(retry_after_seconds("30", None), 30)
+
+    def test_recording_a_negative_wait_falls_back_to_the_minimum(self):
+        block = RateLimitBlock()
+        block.record(-30)
+        self.assertGreater(block.remaining(), 0)
+        self.assertAlmostEqual(block.remaining(), MINIMUM_BLOCK_SECONDS, delta=2)
+
+    def test_recording_a_zero_wait_falls_back_to_the_minimum(self):
+        block = RateLimitBlock()
+        block.record(0)
+        self.assertAlmostEqual(block.remaining(), MINIMUM_BLOCK_SECONDS, delta=2)
+
+    def test_a_short_positive_wait_is_not_inflated(self):
+        # The guard must not turn every block into the minimum; a genuine
+        # five-second wait is information, not a malformed value.
+        block = RateLimitBlock()
+        block.record(5)
+        self.assertAlmostEqual(block.remaining(), 5, delta=2)
+
+    def test_a_negative_wait_leaves_the_client_actually_blocked(self):
+        client = Client(SECRET)
+        client._block.record(-30)
+        with self.assertRaises(RateLimitError):
+            client.get_current_data("AA111")
+
