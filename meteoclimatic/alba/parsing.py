@@ -20,6 +20,7 @@ unusable *required* structure raises
 silently treated as an absent measurement.
 """
 
+import math
 from datetime import date, datetime, timezone
 
 from meteoclimatic.alba.errors import MalformedResponseError
@@ -149,7 +150,16 @@ def _optional_number(container, key):
     if isinstance(value, bool):
         raise MalformedResponseError("field %s is a boolean, expected a number" % (key,))
     if isinstance(value, (int, float)):
-        return float(value)
+        number = float(value)
+        if not math.isfinite(number):
+            # Python's JSON decoder accepts NaN and Infinity, so a malformed
+            # payload can carry them this far. NaN is the dangerous one: every
+            # comparison against it is false, so a consumer checking agreement
+            # between two sources would be told they match.
+            raise MalformedResponseError(
+                "field %s is not a finite number" % (key,)
+            )
+        return number
     raise MalformedResponseError(
         "field %s is %s, expected a number" % (key, type(value).__name__)
     )
@@ -390,7 +400,12 @@ def parse_current_data(payload, fetched_at=None, cache_directive=None):
     return Observation(
         station=_parse_station(data),
         updated=_parse_datetime(data.get("updated"), "data.updated"),
-        fetched_at=fetched_at or datetime.now(timezone.utc),
+        # `or` would swallow a falsy invalid value such as 0 or "" and
+        # silently substitute the current time, so the observation's
+        # freshness would be invented rather than reported. Only a genuine
+        # absence may default.
+        fetched_at=(datetime.now(timezone.utc)
+                    if fetched_at is None else fetched_at),
         local_day=_parse_date(wxdata.get("local_day"), "wxdata.local_day"),
         ttl=_optional_seconds(data, "ttl"),
         quality=Quality(
