@@ -3,17 +3,17 @@ import unittest
 from urllib.error import HTTPError
 from urllib.request import Request
 from meteoclimatic.exceptions import StationNotFound, MeteoclimaticError
-from meteoclimatic import MeteoclimaticClient
-from meteoclimatic import __version__
+from meteoclimatic.rainbow import Client
+from meteoclimatic.version import __version__
 from unittest.mock import patch, MagicMock
 
 
 class TestMeteoclimaticClient(unittest.TestCase):
 
     def setUp(self):
-        self.client = MeteoclimaticClient()
+        self.client = Client()
 
-    @patch('meteoclimatic.client.urlopen', autospec=True)
+    @patch('meteoclimatic.rainbow.client.urlopen', autospec=True)
     def test_get_station_info_ok(self, mock_urlopen):
         f = open(os.path.join(os.path.dirname(
             __file__), "feeds", "full_station.xml"))
@@ -31,7 +31,7 @@ class TestMeteoclimaticClient(unittest.TestCase):
                         f"pymeteoclimatic/{__version__}")
         self.assertEqual(res.station.code, "ESCAT4300000043206B")
 
-    @patch('meteoclimatic.client.urlopen', autospec=True)
+    @patch('meteoclimatic.rainbow.client.urlopen', autospec=True)
     def test_get_station_info_no_xml(self, mock_urlopen):
         mock_urlopen.return_value.read.return_value = ""
 
@@ -41,7 +41,7 @@ class TestMeteoclimaticClient(unittest.TestCase):
         self.assertEqual(str(
             error.exception), "Station code ESCAT4300000043206B did not return any item")
 
-    @patch('meteoclimatic.client.urlopen', autospec=True)
+    @patch('meteoclimatic.rainbow.client.urlopen', autospec=True)
     def test_get_station_info_404(self, mock_urlopen):
         mock_urlopen.side_effect = HTTPError("", 404, "Not Found", [], None)
 
@@ -50,7 +50,7 @@ class TestMeteoclimaticClient(unittest.TestCase):
         self.assertEqual(str(
             error.exception), "Error fetching station data [status_code=404]")
 
-    @patch('meteoclimatic.client.urlopen', autospec=True)
+    @patch('meteoclimatic.rainbow.client.urlopen', autospec=True)
     def test_user_agent_header_is_set(self, mock_urlopen):
         """Test that the User-Agent header is correctly set with version"""
         mock_response = MagicMock()

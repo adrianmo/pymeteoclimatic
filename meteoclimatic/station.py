@@ -1,36 +1,20 @@
-class Station:
-    """
-    A class representing a Meteoclimatic station.
+"""Deprecated import path for ``meteoclimatic.rainbow.station``.
 
-    :param name: Name of the station
-    :type name: `str`
-    :param code: Meteoclimatic code of the station
-    :type code: `str`
-    :param url: URL of the station
-    :type url: `str`
-    :returns: a *Station* instance
-    :raises: *ValueError* when invalid empty or null values are provided
-    """
+.. deprecated::
+   The RSS transport moved to :mod:`meteoclimatic.rainbow`. Import from there, or
+   from the package root. This compatibility module is removed in
+   pymeteoclimatic 1.0.
+"""
 
-    def __init__(self, name: str, code: str, url: str):
-        """Initialize the class."""
-        if name is None or len(name) == 0:
-            raise ValueError("Station name cannot be empty")
-        self.name = name
+import warnings
 
-        if code is None or len(code) == 0:
-            raise ValueError("Station code cannot be empty")
-        self.code = code
-        self.url = url
+from meteoclimatic.rainbow.station import Station  # noqa: F401
 
-    def __eq__(self, other):
-        if not isinstance(other, Station):
-            return NotImplemented
-        prop_names = list(self.__dict__)
-        for prop in prop_names:
-            if self.__dict__[prop] != other.__dict__[prop]:
-                return False
-        return True
+warnings.warn(
+    "meteoclimatic.station moved to meteoclimatic.rainbow.station and this "
+    "compatibility module is removed in pymeteoclimatic 1.0.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-    def __repr__(self):
-        return "%s(%r)" % (self.__class__, self.__dict__)
+__all__ = ["Station"]
