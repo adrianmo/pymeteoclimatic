@@ -36,6 +36,7 @@ from meteoclimatic.alba._http import (
     build_headers,
     raise_for_status,
     retry_after_seconds,
+    validate_api_key,
     with_status,
 )
 from meteoclimatic.alba.errors import (
@@ -65,9 +66,10 @@ class AsyncClient:
     def __init__(self, api_key, session=None, base_url=DEFAULT_BASE_URL,
                  timeout=DEFAULT_TIMEOUT):
         """Initialize the class."""
-        if not api_key:
-            raise ValueError("api_key cannot be empty")
-        self._api_key = api_key
+        # Validated here so a malformed credential fails at construction
+        # rather than inside the header encoder, which quotes the value it
+        # rejects and would put the secret in a traceback.
+        self._api_key = validate_api_key(api_key)
         self._session = session
         self._owns_session = session is None
         self._base_url = base_url.rstrip("/")

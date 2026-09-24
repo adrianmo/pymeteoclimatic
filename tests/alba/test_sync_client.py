@@ -287,6 +287,62 @@ class TestOnlyTwoHundredIsSuccess(unittest.TestCase):
             observation = client.get_current_data("AA111")
         self.assertEqual(observation.station.code, "AA111")
 
+class TestMalformedCredentialsNeverReachTheEncoder(unittest.TestCase):
+    """A bad credential must fail without ever being quoted.
+
+    The existing credential tests all use a well-formed key, so they proved
+    the happy path only. A key read from a file or an environment variable
+    routinely carries a trailing newline; that reached the header encoder,
+    which raises ValueError with the offending value embedded, putting the
+    secret into the message and every traceback carrying it.
+    """
+
+    def test_trailing_newline_is_tolerated_not_fatal(self):
+        # The common accident. Stripping it is safe: a credential never
+        # meaningfully begins or ends with whitespace.
+        self.assertEqual(Client(SECRET + "\n")._api_key, SECRET)
+
+    def test_surrounding_whitespace_is_stripped(self):
+        self.assertEqual(Client("  " + SECRET + "  ")._api_key, SECRET)
+
+    def test_embedded_control_character_is_refused(self):
+        with self.assertRaises(ValueError) as caught:
+            Client(SECRET + "\tmore")
+        self.assertNotIn(SECRET, str(caught.exception))
+
+    def test_a_refusal_never_quotes_the_credential(self):
+        import traceback
+        for bad in (SECRET + "\n\r", SECRET + "\x00", SECRET + "\x7f"):
+            with self.subTest(bad=repr(bad)):
+                try:
+                    Client(bad)
+                except ValueError:
+                    self.assertNotIn(SECRET, traceback.format_exc())
+
+    def test_empty_and_non_string_are_refused(self):
+        for bad in ("", "   ", None, 12345, b"bytes"):
+            with self.subTest(bad=repr(bad)):
+                with self.assertRaises(ValueError):
+                    Client(bad)
+
+    def test_any_accepted_key_survives_the_real_header_encoder(self):
+        # The property that matters: validation must admit nothing the
+        # encoder would reject, because rejection is what quotes the value.
+        import http.client
+        import io
+        from meteoclimatic.alba._http import build_headers, validate_api_key
+
+        for raw in (SECRET, SECRET + "\n", "  " + SECRET + "  ",
+                    "key.with.dots", "key/with/slash", "key with space",
+                    "a" * 200):
+            with self.subTest(raw=repr(raw[:20])):
+                headers = build_headers(validate_api_key(raw), "ua/1")
+                connection = http.client.HTTPConnection("example.invalid")
+                connection.sock = io.BytesIO()
+                connection.putrequest("GET", "/")
+                for name, value in headers.items():
+                    connection.putheader(name, value)
+
 
 if __name__ == "__main__":
     unittest.main()

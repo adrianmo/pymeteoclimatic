@@ -34,6 +34,7 @@ __all__ = [
     "raise_for_status",
     "with_status",
     "retry_after_seconds",
+    "validate_api_key",
 ]
 
 DEFAULT_BASE_URL = "https://api.m11c.net"
@@ -138,6 +139,43 @@ class RateLimitBlock:
         raise RateLimitError(int(left) or 1)
 
 
+def validate_api_key(api_key):
+    """Return the credential, cleaned, or raise without ever echoing it.
+
+    A key is frequently read from a file or an environment variable and
+    arrives with a trailing newline. Passing that to the header encoder makes
+    the standard library raise ``ValueError: Invalid header value b'...'``,
+    which puts the secret verbatim into the message and into every traceback
+    and error report that carries it. The credential-safety contract says the
+    key never appears in an exception, so it has to be checked before it can
+    reach code that quotes it.
+
+    Surrounding whitespace is stripped, because that accident is routine and
+    the credential never meaningfully begins or ends with it. Anything the
+    header encoder would reject is refused outright, and every message here is
+    written so that it describes the fault without containing the value.
+    """
+    if not isinstance(api_key, str):
+        raise ValueError("api_key must be a string")
+    cleaned = api_key.strip()
+    if not cleaned:
+        raise ValueError("api_key cannot be empty")
+    for character in cleaned:
+        if ord(character) < 32 or ord(character) == 127:
+            raise ValueError(
+                "api_key contains a control character; it is most likely a "
+                "stray newline from a file or environment variable"
+            )
+    try:
+        cleaned.encode("latin-1")
+    except UnicodeEncodeError:
+        raise ValueError(
+            "api_key contains characters that cannot be sent in an HTTP "
+            "header"
+        ) from None
+    return cleaned
+
+
 def build_headers(api_key, user_agent):
     """Return the request headers, carrying the credential in a header only.
 
@@ -147,7 +185,7 @@ def build_headers(api_key, user_agent):
     is deliberately not used.
     """
     return {
-        "APIkey": api_key,
+        "APIkey": validate_api_key(api_key),
         "Accept": "application/json",
         "User-Agent": user_agent,
     }
