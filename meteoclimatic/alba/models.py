@@ -23,6 +23,7 @@ A value the station does not provide is ``None``. ``None`` never means zero, and
 a real zero is preserved. Numeric values are floats, except counts.
 """
 
+import math
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -413,6 +414,41 @@ class Quality:
         )
 
 
+def _require_aware(value, name):
+    """Raise unless *value* is ``None`` or a timezone-aware datetime.
+
+    ``updated`` and ``fetched_at`` carry the same promise and were checked
+    separately, which is how one of them ended up with an awareness check and
+    the other without it. Sharing the rule makes them the same by
+    construction rather than by inspection.
+    """
+    if value is None:
+        return
+    if not isinstance(value, datetime):
+        raise ValueError(
+            "%s is not an instance of datetime.datetime" % (name,))
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ValueError(
+            "%s must be timezone aware; the API reports an explicit offset "
+            "and consumers rely on it" % (name,))
+
+
+def _require_seconds(value, name):
+    """Raise unless *value* is ``None`` or a finite, non-negative number.
+
+    A non-finite value passes a ``< 0`` comparison and only fails later, when
+    the duration it feeds is built.
+    """
+    if value is None:
+        return
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError("%s is not a number of seconds" % (name,))
+    if not math.isfinite(value):
+        raise ValueError("%s must be a finite number of seconds" % (name,))
+    if value < 0:
+        raise ValueError("%s cannot be negative" % (name,))
+
+
 class Observation:
     """A single reading of a station through the Alba API.
 
@@ -454,28 +490,11 @@ class Observation:
         """Initialize the class."""
         if not isinstance(station, Station):
             raise ValueError("station is not a meteoclimatic.alba.Station")
-        if updated is not None and not isinstance(updated, datetime):
-            raise ValueError("updated is not an instance of datetime.datetime")
+        _require_aware(updated, "updated")
+        _require_aware(fetched_at, "fetched_at")
+        _require_seconds(ttl, "ttl")
         if local_day is not None and not isinstance(local_day, date):
             raise ValueError("local_day is not an instance of datetime.date")
-        # fetched_at and ttl are the two inputs to expires_at, and neither was
-        # checked while updated and local_day were. A naive fetched_at, which
-        # is what datetime.now() gives, produced a naive expires_at and made
-        # seconds_until_refresh raise deep inside arithmetic instead of at the
-        # point the bad value entered.
-        if fetched_at is not None:
-            if not isinstance(fetched_at, datetime):
-                raise ValueError(
-                    "fetched_at is not an instance of datetime.datetime")
-            if fetched_at.tzinfo is None or fetched_at.utcoffset() is None:
-                raise ValueError(
-                    "fetched_at must be timezone aware; use "
-                    "datetime.now(timezone.utc) rather than datetime.now()")
-        if ttl is not None:
-            if isinstance(ttl, bool) or not isinstance(ttl, (int, float)):
-                raise ValueError("ttl is not a number of seconds")
-            if ttl < 0:
-                raise ValueError("ttl cannot be negative")
         self.station = station
         self.temperature = temperature if temperature is not None else Temperature()
         self.humidity = humidity if humidity is not None else Humidity()
@@ -517,7 +536,7 @@ class Observation:
         """
         if self.ttl is None:
             return None
-        reference = now or datetime.now(timezone.utc)
+        reference = datetime.now(timezone.utc) if now is None else now
         return max((self.expires_at - reference).total_seconds(), minimum)
 
     def __getattr__(self, name):

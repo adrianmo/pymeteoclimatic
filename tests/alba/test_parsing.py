@@ -472,6 +472,96 @@ class TestUnusableTimezoneIsReportedAbsent(unittest.TestCase):
         payload["data"]["name"] = 999
         self.assertIsNone(parse_current_data(payload).station.name)
 
+class TestNonFiniteValuesAreMalformed(unittest.TestCase):
+    """NaN and Infinity must not survive into a measurement.
+
+    Python's JSON decoder accepts both, so a malformed payload carries them
+    straight through. NaN is the dangerous one: every comparison against it
+    is false, so the migration comparison helper reported the two transports
+    as agreeing on a field where one side was NaN.
+    """
+
+    def _with_tmp(self, value):
+        payload = load("currentdata_full.json")
+        payload["data"]["wxdata"]["TMP"] = value
+        return parse_current_data(payload)
+
+    def test_nan_measurement_is_rejected(self):
+        with self.assertRaises(MalformedResponseError) as caught:
+            self._with_tmp(float("nan"))
+        self.assertIn("finite", str(caught.exception))
+
+    def test_infinite_measurement_is_rejected(self):
+        for value in (float("inf"), float("-inf")):
+            with self.subTest(value=value):
+                with self.assertRaises(MalformedResponseError):
+                    self._with_tmp(value)
+
+    def test_ordinary_measurement_still_parses(self):
+        self.assertEqual(self._with_tmp(21.5).temperature.current, 21.5)
+
+    def test_nan_no_longer_reads_as_agreement(self):
+        # The reason this matters. Without the guard, comparing 21.5 against
+        # NaN reported no difference, because abs(21.5 - nan) > tolerance is
+        # false, so the helper that produces migration evidence claimed the
+        # two transports matched.
+        import math
+        self.assertFalse(abs(21.5 - float("nan")) > 0.05)
+        with self.assertRaises(MalformedResponseError):
+            self._with_tmp(float("nan"))
+
+
+class TestFalsyOverridesAreRejectedNotReplaced(unittest.TestCase):
+    """A falsy invalid override must not become the current time."""
+
+    def test_zero_fetched_at_is_rejected(self):
+        with self.assertRaises(ValueError):
+            parse_current_data(load("currentdata_full.json"), fetched_at=0)
+
+    def test_empty_string_fetched_at_is_rejected(self):
+        with self.assertRaises(ValueError):
+            parse_current_data(load("currentdata_full.json"), fetched_at="")
+
+    def test_absent_override_still_defaults(self):
+        observation = parse_current_data(load("currentdata_full.json"))
+        self.assertIsNotNone(observation.fetched_at.utcoffset())
+
+    def test_an_aware_override_is_used_unchanged(self):
+        moment = datetime(2026, 8, 19, 10, 0, tzinfo=timezone.utc)
+        observation = parse_current_data(
+            load("currentdata_full.json"), fetched_at=moment)
+        self.assertEqual(observation.fetched_at, moment)
+
+
+class TestUpdatedMustBeAwareOnDirectConstruction(unittest.TestCase):
+    """The parser enforced it; direct construction did not."""
+
+    def test_naive_updated_is_rejected(self):
+        from meteoclimatic.alba.models import Observation, Station
+        with self.assertRaises(ValueError) as caught:
+            Observation(Station("AA111"), updated=datetime(2026, 8, 19))
+        self.assertIn("aware", str(caught.exception))
+
+    def test_aware_updated_is_accepted(self):
+        from meteoclimatic.alba.models import Observation, Station
+        moment = datetime(2026, 8, 19, tzinfo=timezone.utc)
+        self.assertEqual(
+            Observation(Station("AA111"), updated=moment).updated, moment)
+
+    def test_non_finite_ttl_is_rejected(self):
+        from meteoclimatic.alba.models import Observation, Station
+        for value in (float("nan"), float("inf"), float("-inf")):
+            with self.subTest(ttl=value):
+                with self.assertRaises(ValueError):
+                    Observation(Station("AA111"), ttl=value)
+
+    def test_a_finite_ttl_still_yields_an_expiry(self):
+        from meteoclimatic.alba.models import Observation, Station
+        observation = Observation(
+            Station("AA111"),
+            fetched_at=datetime(2026, 8, 19, tzinfo=timezone.utc), ttl=226)
+        self.assertIsNotNone(observation.expires_at)
+
 
 if __name__ == "__main__":
     unittest.main()
