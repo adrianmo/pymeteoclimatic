@@ -338,7 +338,11 @@ class Station:
             return None
         try:
             return ZoneInfo(self.timezone)
-        except (ZoneInfoNotFoundError, ValueError):
+        except (ZoneInfoNotFoundError, ValueError, TypeError):
+            # TypeError covers a zone of the wrong type entirely. The parser
+            # now rejects that at the boundary, but the documented promise of
+            # this property is None for an unusable zone, and a Station can
+            # also be constructed directly.
             return None
 
     def __eq__(self, other):
@@ -454,6 +458,24 @@ class Observation:
             raise ValueError("updated is not an instance of datetime.datetime")
         if local_day is not None and not isinstance(local_day, date):
             raise ValueError("local_day is not an instance of datetime.date")
+        # fetched_at and ttl are the two inputs to expires_at, and neither was
+        # checked while updated and local_day were. A naive fetched_at, which
+        # is what datetime.now() gives, produced a naive expires_at and made
+        # seconds_until_refresh raise deep inside arithmetic instead of at the
+        # point the bad value entered.
+        if fetched_at is not None:
+            if not isinstance(fetched_at, datetime):
+                raise ValueError(
+                    "fetched_at is not an instance of datetime.datetime")
+            if fetched_at.tzinfo is None or fetched_at.utcoffset() is None:
+                raise ValueError(
+                    "fetched_at must be timezone aware; use "
+                    "datetime.now(timezone.utc) rather than datetime.now()")
+        if ttl is not None:
+            if isinstance(ttl, bool) or not isinstance(ttl, (int, float)):
+                raise ValueError("ttl is not a number of seconds")
+            if ttl < 0:
+                raise ValueError("ttl cannot be negative")
         self.station = station
         self.temperature = temperature if temperature is not None else Temperature()
         self.humidity = humidity if humidity is not None else Humidity()
