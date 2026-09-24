@@ -106,8 +106,8 @@ Alba requires the **API Identifier** shown in your Meteoclimatic profile
 which the API rejects with a `401`.
 
 The key belongs to a user rather than to a station, and it can read any public
-station, including ones you do not own. Both Alba endpoints used by this library
-require it.
+station, including ones you do not own. The read endpoint this library uses
+requires it.
 
 The key is sent only as a request header. It is never put in a URL or query
 string, never written to a log, and never appears in `repr()` or in an exception,

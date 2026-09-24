@@ -22,7 +22,7 @@ Usage::
     observation.temperature.daily_max
     observation.station.timezone
 
-An API key is required: both read endpoints are authenticated.
+An API key is required: the read endpoint is authenticated.
 
 Transport selection is always explicit. A failure here never falls back to the
 legacy RSS feed in :mod:`meteoclimatic.rainbow`.
