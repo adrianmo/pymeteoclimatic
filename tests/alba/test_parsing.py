@@ -409,6 +409,69 @@ class TestParserFailuresCarryTheResponseStatus(unittest.TestCase):
                 Client("dummy-key").get_current_data("AA111")
         self.assertEqual(caught.exception.status, 200)
 
+class TestObservationValidatesWhatExpiryDependsOn(unittest.TestCase):
+    """fetched_at and ttl feed expires_at, so both are checked on the way in.
+
+    updated and local_day were validated while these two were not, so a
+    naive datetime.now() produced a naive expires_at and the failure only
+    surfaced later inside arithmetic, far from the value that caused it.
+    """
+
+    def test_naive_fetched_at_is_refused(self):
+        from meteoclimatic.alba.models import Observation, Station
+        with self.assertRaises(ValueError) as caught:
+            Observation(Station("AA111"), fetched_at=datetime.now())
+        self.assertIn("aware", str(caught.exception))
+
+    def test_non_datetime_fetched_at_is_refused(self):
+        from meteoclimatic.alba.models import Observation, Station
+        with self.assertRaises(ValueError):
+            Observation(Station("AA111"), fetched_at="now")
+
+    def test_aware_fetched_at_is_accepted(self):
+        from meteoclimatic.alba.models import Observation, Station
+        observation = Observation(
+            Station("AA111"),
+            fetched_at=datetime(2026, 8, 19, tzinfo=timezone.utc), ttl=226)
+        self.assertIsNotNone(observation.expires_at)
+        self.assertIsNotNone(observation.seconds_until_refresh())
+
+    def test_non_numeric_or_negative_ttl_is_refused(self):
+        from meteoclimatic.alba.models import Observation, Station
+        for bad in ("soon", -5, True):
+            with self.subTest(ttl=repr(bad)):
+                with self.assertRaises(ValueError):
+                    Observation(Station("AA111"), ttl=bad)
+
+
+class TestUnusableTimezoneIsReportedAbsent(unittest.TestCase):
+    """An untrusted zone must never reach ZoneInfo as the wrong type."""
+
+    def test_non_string_timezone_in_the_payload_becomes_none(self):
+        payload = load("currentdata_full.json")
+        payload["data"]["timezone"] = 12345
+        station = parse_current_data(payload).station
+        self.assertIsNone(station.timezone)
+        self.assertIsNone(station.tzinfo)
+
+    def test_directly_constructed_station_still_returns_none(self):
+        from meteoclimatic.alba.models import Station
+        self.assertIsNone(Station("AA111", timezone=12345).tzinfo)
+
+    def test_unknown_zone_name_returns_none(self):
+        from meteoclimatic.alba.models import Station
+        self.assertIsNone(Station("AA111", timezone="Mars/Olympus").tzinfo)
+
+    def test_a_real_zone_still_resolves(self):
+        payload = load("currentdata_full.json")
+        station = parse_current_data(payload).station
+        self.assertEqual(str(station.tzinfo), "Europe/Madrid")
+
+    def test_non_string_name_becomes_none(self):
+        payload = load("currentdata_full.json")
+        payload["data"]["name"] = 999
+        self.assertIsNone(parse_current_data(payload).station.name)
+
 
 if __name__ == "__main__":
     unittest.main()
