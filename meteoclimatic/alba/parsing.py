@@ -350,8 +350,8 @@ def _parse_station(data):
 
     return Station(
         code=code,
-        name=data.get("name"),
-        timezone=data.get("timezone"),
+        name=_optional_text(data, "name"),
+        timezone=_optional_text(data, "timezone"),
         latitude=_optional_number(data, "coord_Y"),
         longitude=_optional_number(data, "coord_X"),
         elevation=_optional_number(data, "elevation"),
