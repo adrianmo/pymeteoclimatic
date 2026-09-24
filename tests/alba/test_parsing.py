@@ -27,6 +27,21 @@ def load(name):
         return json.load(handle)
 
 
+def every_measurement(observation):
+    """Return every modelled value, keyed ``group.field``.
+
+    Derived from the groups themselves rather than listed by hand, so a test
+    claiming that *no* value changed covers every field, including ones added
+    later. A hand-picked subset is how blanking the solar or air-quality
+    groups could pass a test that said nothing was blanked.
+    """
+    return {
+        "%s.%s" % (group, name): value
+        for group in FIELD_MAP
+        for name, value in getattr(observation, group).as_dict().items()
+    }
+
+
 class TestCoverage(unittest.TestCase):
     """Every value Alba returns must be reachable."""
 
@@ -599,31 +614,22 @@ class TestLowQualityFlagsAreParsedButNeverFilter(unittest.TestCase):
 
     def test_measurements_survive_unfavourable_flags(self):
         # The point of the fixture: filtering on the flags would discard all
-        # of these, and every one of them is a real reading.
-        observation = self.observation
-        self.assertIsNotNone(observation.temperature.current)
-        self.assertIsNotNone(observation.temperature.daily_max)
-        self.assertIsNotNone(observation.temperature.daily_min)
-        self.assertIsNotNone(observation.humidity.current)
-        self.assertIsNotNone(observation.pressure.current)
-        self.assertIsNotNone(observation.wind.speed)
-        self.assertIsNotNone(observation.wind.daily_gust)
-        self.assertIsNotNone(observation.wind.bearing)
-        self.assertIsNotNone(observation.precipitation.daily_total)
+        # of these, and every one of them is a real reading. The fixture
+        # populates every modelled field, so none may come back empty.
+        for field, value in every_measurement(self.observation).items():
+            with self.subTest(field=field):
+                self.assertIsNotNone(value)
 
     def test_flags_do_not_appear_in_any_availability_decision(self):
         # Availability is decided by the value alone. Same payload, flags
-        # flipped to favourable: the parsed measurements must be identical.
+        # flipped to favourable: every parsed measurement must be identical.
         payload = load("currentdata_low_quality.json")
         for key in payload["data"]["sensors"]:
             payload["data"]["sensors"][key]["status"] = True
             payload["data"]["sensors"][key]["quality"] = True
         flipped = parse_current_data(payload)
-        self.assertEqual(flipped.temperature.current,
-                         self.observation.temperature.current)
-        self.assertEqual(flipped.wind.speed, self.observation.wind.speed)
-        self.assertEqual(flipped.precipitation.daily_total,
-                         self.observation.precipitation.daily_total)
+        self.assertEqual(every_measurement(flipped),
+                         every_measurement(self.observation))
 
 
 class TestStaleReadingIsDistinguishableFromDueRefresh(unittest.TestCase):
@@ -666,8 +672,17 @@ class TestStaleReadingIsDistinguishableFromDueRefresh(unittest.TestCase):
 
     def test_measurements_are_still_parsed_for_a_stale_reading(self):
         # Staleness is the consumer's judgement to make; the parser does not
-        # blank values or decide on their behalf.
-        self.assertIsNotNone(self.observation.temperature.current)
+        # blank values or decide on their behalf. Same payload with a fresh
+        # updated: every parsed measurement must be identical.
+        payload = load("currentdata_stale.json")
+        payload["data"]["updated"] = "2026-08-19T12:35:21+02:00"
+        fresh = parse_current_data(payload, fetched_at=self.fetched_at)
+        self.assertEqual(fresh.fetched_at - fresh.updated, timedelta(0))
+        self.assertEqual(every_measurement(self.observation),
+                         every_measurement(fresh))
+        for field, value in every_measurement(self.observation).items():
+            with self.subTest(field=field):
+                self.assertIsNotNone(value)
         self.assertIsNotNone(self.observation.local_day)
 
 
