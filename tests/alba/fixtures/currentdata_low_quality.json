@@ -1,0 +1,181 @@
+{
+  "status": 200,
+  "error": false,
+  "message": "OK",
+  "data": {
+    "ID": 1,
+    "stationCode": "CC333",
+    "name": "Example Low Quality Station",
+    "timezone": "Europe/Madrid",
+    "updated": "2026-08-19T12:35:21+02:00",
+    "ttl": 226,
+    "mainQuality": 0,
+    "additionalQuality": 0,
+    "transitionalQuality": 0,
+    "coord_X": 1.0,
+    "coord_Y": 41.0,
+    "elevation": 100,
+    "meteor": "",
+    "robertsson": {
+      "A": 0,
+      "B": 0,
+      "C": 0,
+      "D": 0
+    },
+    "webcam": {
+      "URL": "https://example.invalid/webcam.jpg",
+      "show": true
+    },
+    "extra": {
+      "sunrise": "2026-08-19T07:09:09+02:00",
+      "sunset": "2026-08-19T20:49:31+02:00",
+      "sunlength": "13 hrs. 40 min.",
+      "forecast": "<p>example forecast</p>"
+    },
+    "sensors": {
+      "TMP": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "HUM": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "BAR": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "WND": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "AZI": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "PCP": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "SUN": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "UVI": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "DHTM": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "DLTM": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "DHHM": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "DLHM": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "DHBR": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "DLBR": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "DGST": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "DPCP": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "DSUN": {
+        "status": false,
+        "quality": false,
+        "params": null
+      },
+      "DUVI": {
+        "status": false,
+        "quality": false,
+        "params": null
+      }
+    },
+    "wxdata": {
+      "local_day": "2026-08-19",
+      "TMP": 21.5,
+      "HUM": 60,
+      "BAR": 1013.2,
+      "WND": 5.4,
+      "AZI": 180,
+      "DHTM": 27.1,
+      "DLTM": 16.3,
+      "DHHM": 88,
+      "DLHM": 41,
+      "DHBR": 1015.0,
+      "DLBR": 1011.7,
+      "DGST": 24.1,
+      "DPCP": 0,
+      "PCP": 0,
+      "SUN": 402.0,
+      "UVI": 1,
+      "AQI": 34,
+      "PM1": 3.2,
+      "PM10": 11.4,
+      "PM25": 6.8,
+      "DSUN": 411,
+      "DUVI": 6,
+      "DHAQI": 51,
+      "DLAQI": 12,
+      "DHPM1": 7.1,
+      "DHPM10": 22.9,
+      "DHPM25": 13.5,
+      "DLPM1": 1.0,
+      "DLPM10": 4.2,
+      "DLPM25": 2.1,
+      "avg_AQI": 30,
+      "avg_AZI": 172,
+      "avg_BAR": 1013.0,
+      "avg_HUM": 62,
+      "avg_PCP": 0,
+      "avg_PM1": 3.0,
+      "avg_PM10": 10.8,
+      "avg_PM25": 6.1,
+      "avg_SUN": 380.0,
+      "avg_TMP": 21.0,
+      "avg_UVI": 2,
+      "avg_WND": 4.9,
+      "bar_trend": "Steady",
+      "droughtdays": 29,
+      "pcp_int_max": 0,
+      "humidity_delta_3h": -4,
+      "temperature_delta_3h": 1.2,
+      "pressure_delta_3h": 0.4,
+      "pressure_delta_6h": -0.2,
+      "pressure_mean_6h": 1013.1
+    }
+  }
+}

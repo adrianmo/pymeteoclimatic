@@ -8,7 +8,7 @@ full set of 51 ``wxdata`` keys, with placeholder identities and coordinates.
 import json
 import os
 import unittest
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from meteoclimatic.alba import (
     FIELD_MAP,
@@ -561,6 +561,163 @@ class TestUpdatedMustBeAwareOnDirectConstruction(unittest.TestCase):
             Station("AA111"),
             fetched_at=datetime(2026, 8, 19, tzinfo=timezone.utc), ttl=226)
         self.assertIsNotNone(observation.expires_at)
+
+
+class TestLowQualityFlagsAreParsedButNeverFilter(unittest.TestCase):
+    """Per-sensor flags are carried and deliberately ignored.
+
+    The provider never defined what ``status`` and ``quality`` mean, and a real
+    station was observed reporting ``status=True`` with ``quality=False`` on
+    every sensor while returning valid measurements. This fixture encodes the
+    adversarial case: every flag is false and the station has no quality
+    category, yet the measurements are sound. If a consumer ever filtered on
+    these flags, it would blank a perfectly good station, so these tests exist
+    to make that regression loud.
+    """
+
+    def setUp(self):
+        self.observation = parse_current_data(load("currentdata_low_quality.json"))
+
+    def test_station_categories_are_parsed_as_unassigned(self):
+        quality = self.observation.quality
+        self.assertEqual(quality.main, 0)
+        self.assertEqual(quality.additional, 0)
+        self.assertEqual(quality.transitional, 0)
+
+    def test_per_sensor_flags_are_parsed_and_reachable(self):
+        flags = self.observation.quality.sensors
+        self.assertTrue(flags, "per-sensor flags must be carried, not discarded")
+        self.assertFalse(flags["TMP"].status)
+        self.assertFalse(flags["TMP"].quality)
+
+    def test_every_sensor_reports_unfavourable_flags(self):
+        self.assertTrue(
+            all(not f.status and not f.quality
+                for f in self.observation.quality.sensors.values()),
+            "the fixture must keep the adversarial combination",
+        )
+
+    def test_measurements_survive_unfavourable_flags(self):
+        # The point of the fixture: filtering on the flags would discard all
+        # of these, and every one of them is a real reading.
+        observation = self.observation
+        self.assertIsNotNone(observation.temperature.current)
+        self.assertIsNotNone(observation.temperature.daily_max)
+        self.assertIsNotNone(observation.temperature.daily_min)
+        self.assertIsNotNone(observation.humidity.current)
+        self.assertIsNotNone(observation.pressure.current)
+        self.assertIsNotNone(observation.wind.speed)
+        self.assertIsNotNone(observation.wind.daily_gust)
+        self.assertIsNotNone(observation.wind.bearing)
+        self.assertIsNotNone(observation.precipitation.daily_total)
+
+    def test_flags_do_not_appear_in_any_availability_decision(self):
+        # Availability is decided by the value alone. Same payload, flags
+        # flipped to favourable: the parsed measurements must be identical.
+        payload = load("currentdata_low_quality.json")
+        for key in payload["data"]["sensors"]:
+            payload["data"]["sensors"][key]["status"] = True
+            payload["data"]["sensors"][key]["quality"] = True
+        flipped = parse_current_data(payload)
+        self.assertEqual(flipped.temperature.current,
+                         self.observation.temperature.current)
+        self.assertEqual(flipped.wind.speed, self.observation.wind.speed)
+        self.assertEqual(flipped.precipitation.daily_total,
+                         self.observation.precipitation.daily_total)
+
+
+class TestStaleReadingIsDistinguishableFromDueRefresh(unittest.TestCase):
+    """Two different things a consumer must not confuse.
+
+    ``updated`` says when the station last produced a reading. ``ttl`` says
+    when to ask again. A station that stopped reporting hours ago still
+    returns a fresh ttl, so a consumer polling on ttl alone would keep
+    re-fetching an old reading and never notice. Both axes are exposed so the
+    two cases can be told apart.
+    """
+
+    def setUp(self):
+        self.fetched_at = datetime(2026, 8, 19, 10, 35, 21, tzinfo=timezone.utc)
+        self.observation = parse_current_data(
+            load("currentdata_stale.json"), fetched_at=self.fetched_at)
+
+    def test_the_reading_itself_is_old(self):
+        age = self.observation.fetched_at - self.observation.updated
+        self.assertGreater(age.total_seconds(), 8 * 3600)
+
+    def test_yet_the_next_refresh_is_imminent(self):
+        seconds = self.observation.seconds_until_refresh(now=self.fetched_at)
+        self.assertGreater(seconds, 0)
+        self.assertLessEqual(seconds, 300)
+
+    def test_expiry_is_measured_from_the_fetch_not_from_the_reading(self):
+        # If expiry were derived from updated, this reading would already be
+        # long expired and a scheduler would hammer the endpoint.
+        self.assertEqual(
+            self.observation.expires_at,
+            self.fetched_at + timedelta(seconds=self.observation.ttl),
+        )
+        self.assertGreater(self.observation.expires_at, self.fetched_at)
+
+    def test_staleness_is_not_hidden_behind_the_refresh_hint(self):
+        # The two are independent: due-for-refresh says nothing about age.
+        self.assertLess(self.observation.updated, self.observation.expires_at)
+        self.assertLess(self.observation.updated, self.observation.fetched_at)
+
+    def test_measurements_are_still_parsed_for_a_stale_reading(self):
+        # Staleness is the consumer's judgement to make; the parser does not
+        # blank values or decide on their behalf.
+        self.assertIsNotNone(self.observation.temperature.current)
+        self.assertIsNotNone(self.observation.local_day)
+
+
+class TestParityFieldUnits(unittest.TestCase):
+    """Pin the unit each parity field is reported in.
+
+    The parser performs no conversion, so these assertions are about what the
+    values *mean* rather than about arithmetic. They exist because wind was
+    documented as km/h for a time when the service actually reports m/s, and
+    nothing in the suite would have caught that: the numbers pass through
+    unchanged either way. A consumer that declares the wrong unit
+    under-reports wind by a factor of 3.6 with no error.
+    """
+
+    def setUp(self):
+        self.payload = load("currentdata_full.json")
+        self.observation = parse_current_data(self.payload)
+        self.wxdata = self.payload["data"]["wxdata"]
+
+    def test_wind_speed_is_metres_per_second_passed_through(self):
+        self.assertEqual(self.observation.wind.speed, self.wxdata["WND"])
+
+    def test_daily_gust_is_metres_per_second_passed_through(self):
+        self.assertEqual(self.observation.wind.daily_gust, self.wxdata["DGST"])
+
+    def test_no_conversion_is_applied_to_wind(self):
+        # Guards against someone "helpfully" converting to km/h in the parser:
+        # the boundary that chooses a unit is the consumer, not this library.
+        self.assertNotAlmostEqual(
+            self.observation.wind.speed, self.wxdata["WND"] * 3.6, places=6)
+
+    def test_remaining_parity_fields_pass_through_unconverted(self):
+        for attribute, key in (
+            ("temperature.current", "TMP"),
+            ("temperature.daily_max", "DHTM"),
+            ("temperature.daily_min", "DLTM"),
+            ("humidity.current", "HUM"),
+            ("humidity.daily_max", "DHHM"),
+            ("humidity.daily_min", "DLHM"),
+            ("pressure.current", "BAR"),
+            ("pressure.daily_max", "DHBR"),
+            ("pressure.daily_min", "DLBR"),
+            ("wind.bearing", "AZI"),
+            ("precipitation.daily_total", "DPCP"),
+        ):
+            with self.subTest(field=attribute):
+                value = self.observation
+                for part in attribute.split("."):
+                    value = getattr(value, part)
+                self.assertEqual(value, self.wxdata[key])
 
 
 if __name__ == "__main__":
