@@ -11,12 +11,24 @@ clients duplicate their request and response handling, so the duplication is
 what invites divergence. This module drives both through one table of
 scenarios and asserts they agree on the exception type and on the status
 carried with it, so a future divergence fails here rather than in a review.
+
+That table could not see the fourth. Every case in it is a response that
+already has a status, so a connection that fails before a status exists was
+outside its reach. The synchronous client let a dropped connection, a reset,
+a truncated body or a garbled status line escape as ``http.client`` or
+``OSError`` exceptions, while the asynchronous client reported each as a
+``TransportError``. A second table below covers those failures, and it drives
+both clients over a real socket, because mocking the transport would only
+exercise the exception types the test author already thought of.
 """
 
 import asyncio
 import io
 import json
 import os
+import socket
+import struct
+import threading
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -165,3 +177,163 @@ class TestBothClientsFailIdentically(unittest.TestCase):
                 for error in (_sync_failure(status, payload),
                               _async_failure(status, payload)):
                     self.assertNotIn(SECRET, str(error))
+
+
+def _close_without_response(connection):
+    """Read the request, then hang up without answering."""
+
+
+def _reset(connection):
+    """Read the request, then abort the connection with a TCP reset."""
+    connection.setsockopt(
+        socket.SOL_SOCKET, socket.SO_LINGER, struct.pack("ii", 1, 0)
+    )
+
+
+def _cut_off_body(connection):
+    """Promise a longer body than is sent, then hang up."""
+    connection.sendall(
+        b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n"
+        b"Content-Length: 500\r\n\r\n{\"status\":200,"
+    )
+
+
+def _garbled_status_line(connection):
+    """Answer with something that is not an HTTP status line."""
+    connection.sendall(b"NOT-HTTP garbage\r\n\r\n")
+
+
+def _invalid_content_length(connection):
+    """Send a Content-Length that is not a number."""
+    connection.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: abc\r\n\r\n{}")
+
+
+#: (label, server behaviour). Each fails before a usable response exists, so
+#: each must surface as a TransportError from both clients.
+TRANSPORT_FAILURES = [
+    ("closed without a response", _close_without_response),
+    ("connection reset", _reset),
+    ("body cut off", _cut_off_body),
+    ("garbled status line", _garbled_status_line),
+]
+
+
+class _MisbehavingServer:
+    """Loopback server that answers every connection the same broken way.
+
+    Every connection gets the behaviour, not only the first, because an HTTP
+    client may retry an idempotent request on a fresh connection. A one-shot
+    server would refuse that retry, and the test would then observe "connection
+    refused" instead of the failure it set out to produce.
+    """
+
+    def __init__(self, behaviour):
+        self._behaviour = behaviour
+        self._server = socket.create_server(("127.0.0.1", 0))
+        self._server.settimeout(0.2)
+        self._stop = threading.Event()
+        self.connections = 0
+        self._thread = threading.Thread(target=self._run, daemon=True)
+
+    @property
+    def base_url(self):
+        return "http://127.0.0.1:%d" % self._server.getsockname()[1]
+
+    def _run(self):
+        while not self._stop.is_set():
+            try:
+                connection, _ = self._server.accept()
+            except (socket.timeout, OSError):
+                continue
+            self.connections += 1
+            with connection:
+                connection.settimeout(10)
+                try:
+                    connection.recv(65536)
+                    self._behaviour(connection)
+                except OSError:
+                    pass
+
+    def __enter__(self):
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc):
+        self._stop.set()
+        self._thread.join(10)
+        self._server.close()
+        return False
+
+
+def _sync_transport_failure(behaviour):
+    """Return whatever the synchronous client raises, of any type."""
+    with _MisbehavingServer(behaviour) as server:
+        try:
+            Client(SECRET, base_url=server.base_url,
+                   timeout=10).get_current_data("AA111")
+        except Exception as error:  # noqa: BLE001 - the type is under test
+            return error
+    return None
+
+
+def _async_transport_failure(behaviour):
+    """Return whatever the asynchronous client raises, of any type."""
+    from meteoclimatic.alba import AsyncClient
+
+    async def run(base_url):
+        try:
+            async with AsyncClient(SECRET, base_url=base_url,
+                                   timeout=10) as client:
+                await client.get_current_data("AA111")
+        except Exception as error:  # noqa: BLE001 - the type is under test
+            return error
+        return None
+
+    with _MisbehavingServer(behaviour) as server:
+        return asyncio.run(run(server.base_url))
+
+
+class TestBothClientsReportTransportFailuresAsApiError(unittest.TestCase):
+    """A connection that fails before a usable response is a TransportError.
+
+    The README promises that a single ``except ApiError`` catches every error
+    a request can raise. These cases run over a real loopback socket so that
+    each client's own HTTP stack decides which exception it raises; a mock
+    would only raise the types the test already expects.
+    """
+
+    def test_both_clients_raise_transport_error(self):
+        for label, behaviour in TRANSPORT_FAILURES:
+            with self.subTest(case=label):
+                sync_error = _sync_transport_failure(behaviour)
+                async_error = _async_transport_failure(behaviour)
+                for name, error in (("sync", sync_error),
+                                    ("async", async_error)):
+                    self.assertIsInstance(
+                        error, TransportError,
+                        "%s client raised %r instead of TransportError"
+                        % (name, error),
+                    )
+                self.assertEqual(
+                    sync_error.status, async_error.status,
+                    "clients disagree on ApiError.status",
+                )
+
+    def test_a_header_only_one_stack_rejects_is_still_an_api_error(self):
+        """The one known divergence, kept visible rather than left out.
+
+        http.client ignores a Content-Length that is not a number and reads
+        to the end of the connection, while aiohttp rejects the response. The
+        same bytes therefore give MalformedResponseError from the synchronous
+        client and TransportError from the asynchronous one. Both are
+        ApiError, which is what the README promises. Making one HTTP stack
+        imitate the other's parser is not worth it, so only that is asserted.
+        """
+        for name, error in (
+            ("sync", _sync_transport_failure(_invalid_content_length)),
+            ("async", _async_transport_failure(_invalid_content_length)),
+        ):
+            self.assertIsInstance(
+                error, ApiError,
+                "%s client raised %r, not an ApiError" % (name, error),
+            )
