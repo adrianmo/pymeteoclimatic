@@ -167,7 +167,8 @@ class Client:
             #
             # Deliberately excludes the URL and headers from the message. The
             # cause is kept: none of these standard-library exceptions holds
-            # the request, so keeping it does not expose the key.
+            # the request, so keeping it does not expose the key, and the
+            # parity tests walk the chain to check that.
             raise TransportError(
                 "transport failure: %s" % (type(error).__name__,)
             ) from error

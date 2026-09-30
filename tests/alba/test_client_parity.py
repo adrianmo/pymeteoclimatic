@@ -148,6 +148,30 @@ def _async_failure(status, payload):
     return asyncio.run(run())
 
 
+def _assert_credential_absent(test, error):
+    """Fail if the key is in *error* or in any exception chained to it.
+
+    The message is not the only place a secret can travel. An exception keeps
+    the one it was raised from, and an HTTP library's exception can hold the
+    request it failed on, headers included. Anything that prints or serialises
+    the chain, such as a debugger, a test runner or an error reporter, would
+    then show the key even though the message itself is clean. So the whole
+    chain is checked, through both the explicit cause and the implicit context,
+    in both its ``str`` and its ``repr``.
+    """
+    seen = []
+    link = error
+    while link is not None and not any(link is other for other in seen):
+        seen.append(link)
+        for text in (str(link), repr(link)):
+            test.assertNotIn(
+                SECRET, text,
+                "the key is reachable through %s in the chain of %r"
+                % (type(link).__name__, type(error).__name__),
+            )
+        link = link.__cause__ or link.__context__
+
+
 class TestBothClientsFailIdentically(unittest.TestCase):
 
     def test_exception_type_and_status_agree(self):
@@ -176,7 +200,7 @@ class TestBothClientsFailIdentically(unittest.TestCase):
                 payload = load(fixture)
                 for error in (_sync_failure(status, payload),
                               _async_failure(status, payload)):
-                    self.assertNotIn(SECRET, str(error))
+                    _assert_credential_absent(self, error)
 
 
 def _close_without_response(connection):
@@ -337,3 +361,13 @@ class TestBothClientsReportTransportFailuresAsApiError(unittest.TestCase):
                 error, ApiError,
                 "%s client raised %r, not an ApiError" % (name, error),
             )
+
+    def test_neither_client_leaks_the_credential(self):
+        cases = TRANSPORT_FAILURES + [
+            ("invalid Content-Length", _invalid_content_length),
+        ]
+        for label, behaviour in cases:
+            with self.subTest(case=label):
+                for error in (_sync_transport_failure(behaviour),
+                              _async_transport_failure(behaviour)):
+                    _assert_credential_absent(self, error)

@@ -172,13 +172,19 @@ class AsyncClient:
                     station_code,
                 )
                 return payload, response.headers, status
-        except asyncio.TimeoutError as error:
-            raise TransportError("request timed out") from error
+        except asyncio.TimeoutError:
+            failure = "request timed out"
         except aiohttp.ClientError as error:
             # Deliberately excludes the URL and headers from the message.
-            raise TransportError(
-                "transport failure: %s" % (type(error).__name__,)
-            ) from error
+            failure = "transport failure: %s" % (type(error).__name__,)
+
+        # Raised here, after the handlers have finished, so that aiohttp's
+        # exception is neither the cause nor the context of this one. Some
+        # aiohttp exceptions, such as ClientResponseError, keep the request
+        # they failed on, headers included, so chaining them would carry the
+        # API key along with the error to anything that prints or serialises
+        # it. The message already names the exception type.
+        raise TransportError(failure)
 
     @staticmethod
     async def _safe_json(response):
