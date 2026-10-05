@@ -475,8 +475,8 @@ class Observation:
     :param ttl: seconds approximating the next update, for scheduling
     :param quality: the :class:`Quality` metadata
     :param sun: a :class:`Sun` with sunrise, sunset and day length
-    :param forecast: the provider's forecast text. This is **not** a current
-        weather condition and must not be used as one.
+    :param forecast: the provider's forecast, as an HTML fragment. This is
+        **not** a current weather condition and must not be used as one.
     :param cache_directive: the response ``Cache-Control`` value
     :param raw: the untouched ``data`` object, so anything not modelled here,
         including fields added by the provider later, stays reachable
