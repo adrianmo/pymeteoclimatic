@@ -7,7 +7,7 @@ three layers:
   model and the parser. They **import** no third-party package, so an
   application can drive them with whatever HTTP client it already uses.
 * :class:`Client` is a synchronous client built on the standard library. It is
-  the default and adds no dependency.
+  the default and needs no optional extra.
 * :class:`AsyncClient` is the asynchronous alternative, built on aiohttp. It
   requires the optional extra ``pymeteoclimatic[async]`` and resolves lazily, so
   importing this package never requires aiohttp.

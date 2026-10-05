@@ -1,11 +1,18 @@
-"""The core must not depend on any third-party package.
+"""The core must not import any third-party package.
+
+This is a claim about imports, not about what pip installs: until 1.0 a default
+install still brings the RSS transport's parser packages and ``tzdata``. What
+these tests guarantee is that the Alba model, parser and synchronous client
+never import ``aiohttp``, ``bs4`` or ``lxml``. ``tzdata`` is deliberately not
+blocked: it holds no code, and the standard library's ``zoneinfo`` loads it on
+systems that ship no time-zone database.
 
 pymeteoclimatic is a general-purpose library; Home Assistant is its principal
 consumer but not its owner. These tests enforce that separation mechanically, so
-a future change cannot quietly reintroduce a hard dependency.
+a future change cannot quietly reintroduce a hard import.
 
 Each test runs in a subprocess with the relevant modules blocked at import time,
-which is the only honest way to prove absence of a dependency.
+which is the only honest way to prove an import is absent.
 """
 
 import subprocess
@@ -46,7 +53,7 @@ def run_isolated(blocked, body):
     )
 
 
-class TestCoreHasNoThirdPartyDependency(unittest.TestCase):
+class TestCoreImportsNoThirdPartyPackage(unittest.TestCase):
 
     def test_model_and_parser_import_without_aiohttp_or_bs4(self):
         result = run_isolated(

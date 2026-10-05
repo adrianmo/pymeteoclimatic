@@ -64,8 +64,9 @@ $ pip install pymeteoclimatic
 ```
 
 The Alba model, parser and synchronous client **import** only the Python
-standard library, so nothing third-party is loaded at runtime unless you reach
-for it.
+standard library. The one third-party package that can be loaded at runtime is
+`tzdata`, and only by the standard library's `zoneinfo`, on systems that ship no
+time-zone database of their own.
 
 That is a statement about imports, not about what pip installs. Until 1.0 a
 default install also brings `lxml` and `beautifulsoup4`, which only the
@@ -131,8 +132,9 @@ The move from Rainbow to Alba changed how stations are identified:
 | Alba (new) | `T415` |
 | Rainbow (legacy) | `ESCAT4300000043206B` |
 
-Your station's Alba code is shown on its page on the Meteoclimatic site. An
-unknown or invalid code raises `StationNotFound`.
+Meteoclimatic documents where a station's code is shown, in
+[Código de estación](https://github.com/meteoclimatic/API_V3/wiki/C%C3%B3digo-de-estaci%C3%B3n)
+(in Spanish). An unknown or invalid code raises `StationNotFound`.
 
 > **Keep your own identifier.** If your application stores data keyed by station,
 > keep using the identifier you already have and treat the Alba code as an extra
@@ -155,12 +157,14 @@ observation.air_quality.pm25           # 6.8
 | --- | --- |
 | `station` | Code, name, time zone, coordinates, elevation, webcam |
 | `temperature`, `humidity`, `pressure`, `wind`, `precipitation`, `solar`, `air_quality` | The measurement groups |
-| `updated` | The station's observation timestamp, with an explicit UTC offset |
-| `local_day` | The station's local civil day |
-| `ttl` | Seconds approximating the next update |
+| `updated` | The station's observation timestamp, with an explicit UTC offset, or `None` if the response has none |
+| `local_day` | The station's local civil day, or `None` if the response has none |
+| `ttl` | Seconds approximating the next update, or `None` if the response has none |
+| `fetched_at` | When the client received the response, as an aware datetime |
+| `expires_at` | `fetched_at` plus `ttl`, or `None` when there is no `ttl` |
 | `quality` | Station quality categories and per-sensor flags |
 | `sun` | Sunrise, sunset and day length |
-| `forecast` | The provider's forecast text |
+| `forecast` | The provider's forecast, as an HTML fragment; not a current condition |
 | `raw` | The untouched payload |
 
 ### Naming rules
@@ -262,7 +266,14 @@ present and not `None`.
 
 ## Errors
 
-Everything derives from `ApiError`, so a single `except` still catches all of it.
+Every error raised by a request derives from `ApiError`, so a single `except`
+catches all of them.
+
+Arguments are checked before anything is sent. An empty station code raises
+`ValueError`, and so does an API key that is empty, is not a string, or contains
+a character an HTTP header cannot carry; the message never contains the key.
+Whitespace around the key, such as the trailing newline a file or environment
+variable often leaves, is stripped rather than rejected.
 
 | Exception | Raised when |
 | --- | --- |
@@ -299,8 +310,11 @@ without touching the network:
 client.blocked_until   # a datetime while blocked, otherwise None
 ```
 
-The client never sleeps and never retries by itself. It reports how long is left
-and lets you decide.
+Neither client sleeps or retries on its own; each reports how long is left and
+lets you decide. One resend can happen below the library: aiohttp, which the
+asynchronous client uses, may send a request again once, on a fresh connection,
+if the connection drops before any response arrives. It does not resend once a
+response has arrived, so a `429` is never repeated.
 
 **Poll several stations with one client.** The client is tied to a credential, not
 to a station, so reuse a single instance for every station sharing a key:
@@ -316,14 +330,33 @@ and they can extend each other's penalty.
 
 ## How often to poll
 
-Stations publish roughly every five minutes; some every fifteen. Each response
-carries a `ttl` you can schedule from:
+Stations publish roughly every five minutes; some every fifteen. Responses carry
+a `ttl` you can schedule from:
 
 ```python
-delay = observation.seconds_until_refresh(minimum=60)   # e.g. 226.0
+delay = observation.seconds_until_refresh(minimum=60)   # e.g. 226.0, or None
 ```
 
+When a response has no `ttl`, `seconds_until_refresh` returns `None`, so keep a
+fallback interval for that case.
+
 This library never polls on its own. Scheduling is your application's decision.
+
+`ttl` tells you when to ask again, not how old the reading is. A station that has
+stopped reporting keeps returning the same old reading with a fresh `ttl`, so a
+scheduler that looks only at `ttl` will never notice. Check the age separately.
+If the response has no `updated`, the age is unknown, which is not the same as
+fresh:
+
+```python
+if observation.updated is None:
+    age = None   # unknown, not fresh
+else:
+    age = observation.fetched_at - observation.updated   # e.g. datetime.timedelta(seconds=95)
+```
+
+What counts as too old is your decision; the library returns the values either
+way rather than blanking them.
 
 ## Asynchronous client
 
@@ -373,9 +406,9 @@ observation = MeteoclimaticClient().weather_at_station("ESCAT4300000043206B")
 ## Migrating from Rainbow to Alba
 
 1. Obtain an API Identifier from your Meteoclimatic profile.
-2. Look up your station's Alba code on its page on the Meteoclimatic site. Keep
-   your existing identifier as the storage key and treat the Alba code as an
-   extra attribute.
+2. Obtain your station's Alba code (see [Station codes on the two
+   platforms](#station-codes-on-the-two-platforms)). Keep your existing
+   identifier as the storage key and treat the Alba code as an extra attribute.
 3. Replace `weather_at_station()` with `get_current_data()`, and read values from
    the measurement groups instead of `observation.weather`.
 
