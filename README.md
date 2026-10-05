@@ -157,9 +157,9 @@ observation.air_quality.pm25           # 6.8
 | --- | --- |
 | `station` | Code, name, time zone, coordinates, elevation, webcam |
 | `temperature`, `humidity`, `pressure`, `wind`, `precipitation`, `solar`, `air_quality` | The measurement groups |
-| `updated` | The station's observation timestamp, with an explicit UTC offset |
-| `local_day` | The station's local civil day |
-| `ttl` | Seconds approximating the next update |
+| `updated` | The station's observation timestamp, with an explicit UTC offset, or `None` if the response has none |
+| `local_day` | The station's local civil day, or `None` if the response has none |
+| `ttl` | Seconds approximating the next update, or `None` if the response has none |
 | `fetched_at` | When the client received the response, as an aware datetime |
 | `expires_at` | `fetched_at` plus `ttl`, or `None` when there is no `ttl` |
 | `quality` | Station quality categories and per-sensor flags |
@@ -330,21 +330,29 @@ and they can extend each other's penalty.
 
 ## How often to poll
 
-Stations publish roughly every five minutes; some every fifteen. Each response
-carries a `ttl` you can schedule from:
+Stations publish roughly every five minutes; some every fifteen. Responses carry
+a `ttl` you can schedule from:
 
 ```python
-delay = observation.seconds_until_refresh(minimum=60)   # e.g. 226.0
+delay = observation.seconds_until_refresh(minimum=60)   # e.g. 226.0, or None
 ```
+
+When a response has no `ttl`, `seconds_until_refresh` returns `None`, so keep a
+fallback interval for that case.
 
 This library never polls on its own. Scheduling is your application's decision.
 
 `ttl` tells you when to ask again, not how old the reading is. A station that has
 stopped reporting keeps returning the same old reading with a fresh `ttl`, so a
-scheduler that looks only at `ttl` will never notice. Check the age separately:
+scheduler that looks only at `ttl` will never notice. Check the age separately.
+If the response has no `updated`, the age is unknown, which is not the same as
+fresh:
 
 ```python
-age = observation.fetched_at - observation.updated   # e.g. datetime.timedelta(seconds=95)
+if observation.updated is None:
+    age = None   # unknown, not fresh
+else:
+    age = observation.fetched_at - observation.updated   # e.g. datetime.timedelta(seconds=95)
 ```
 
 What counts as too old is your decision; the library returns the values either
