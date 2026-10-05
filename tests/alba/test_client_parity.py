@@ -148,6 +148,27 @@ def _async_failure(status, payload):
     return asyncio.run(run())
 
 
+def _chain(error):
+    """Return every exception reachable from *error*, *error* included.
+
+    An exception can carry both an explicit cause and an implicit context, and
+    they differ when one exception is raised ``from`` another while a third is
+    being handled. The links therefore form a tree, not a list, and following
+    one of them at each step would skip a whole branch. Both are followed,
+    including a context that ``from None`` hides from tracebacks: hiding it
+    from display does not make it unreachable.
+    """
+    found = []
+    pending = [error]
+    while pending:
+        link = pending.pop()
+        if link is None or any(link is other for other in found):
+            continue
+        found.append(link)
+        pending.extend((link.__cause__, link.__context__))
+    return found
+
+
 def _assert_credential_absent(test, error):
     """Fail if the key is in *error* or in any exception chained to it.
 
@@ -155,21 +176,58 @@ def _assert_credential_absent(test, error):
     the one it was raised from, and an HTTP library's exception can hold the
     request it failed on, headers included. Anything that prints or serialises
     the chain, such as a debugger, a test runner or an error reporter, would
-    then show the key even though the message itself is clean. So the whole
-    chain is checked, through both the explicit cause and the implicit context,
-    in both its ``str`` and its ``repr``.
+    then show the key even though the message itself is clean. So every
+    exception reachable through either link is checked, in both its ``str``
+    and its ``repr``.
     """
-    seen = []
-    link = error
-    while link is not None and not any(link is other for other in seen):
-        seen.append(link)
+    for link in _chain(error):
         for text in (str(link), repr(link)):
             test.assertNotIn(
                 SECRET, text,
                 "the key is reachable through %s in the chain of %r"
                 % (type(link).__name__, type(error).__name__),
             )
-        link = link.__cause__ or link.__context__
+
+
+class TestTheCredentialCheckWalksTheWholeChain(unittest.TestCase):
+    """The credential check is only as good as the chain it walks.
+
+    In every scenario in this module, an exception's cause and context turn
+    out to be the same object, so none of them can show whether both links
+    are followed. These cases build the chains directly.
+    """
+
+    @staticmethod
+    def _caught(build):
+        try:
+            build()
+        except Exception as error:  # noqa: BLE001 - the chain is under test
+            return error
+        raise AssertionError("the chain was not built")
+
+    def test_a_key_held_only_by_the_context_is_found(self):
+        def build():
+            try:
+                raise RuntimeError("holds %s" % SECRET)
+            except RuntimeError:
+                raise TransportError("clean") from ValueError("clean")
+
+        error = self._caught(build)
+        self.assertIsNot(error.__cause__, error.__context__)
+        with self.assertRaises(AssertionError):
+            _assert_credential_absent(self, error)
+
+    def test_a_key_hidden_by_from_none_is_found(self):
+        def build():
+            try:
+                raise RuntimeError("holds %s" % SECRET)
+            except RuntimeError:
+                raise TransportError("clean") from None
+
+        error = self._caught(build)
+        self.assertTrue(error.__suppress_context__)
+        with self.assertRaises(AssertionError):
+            _assert_credential_absent(self, error)
 
 
 class TestBothClientsFailIdentically(unittest.TestCase):
@@ -317,6 +375,13 @@ def _async_transport_failure(behaviour):
         return asyncio.run(run(server.base_url))
 
 
+#: Every real-socket case, including the one where the clients disagree on
+#: the exception type, for the checks that hold regardless of type.
+_ALL_TRANSPORT_CASES = TRANSPORT_FAILURES + [
+    ("invalid Content-Length", _invalid_content_length),
+]
+
+
 class TestBothClientsReportTransportFailuresAsApiError(unittest.TestCase):
     """A connection that fails before a usable response is a TransportError.
 
@@ -363,11 +428,28 @@ class TestBothClientsReportTransportFailuresAsApiError(unittest.TestCase):
             )
 
     def test_neither_client_leaks_the_credential(self):
-        cases = TRANSPORT_FAILURES + [
-            ("invalid Content-Length", _invalid_content_length),
-        ]
-        for label, behaviour in cases:
+        for label, behaviour in _ALL_TRANSPORT_CASES:
             with self.subTest(case=label):
                 for error in (_sync_transport_failure(behaviour),
                               _async_transport_failure(behaviour)):
                     _assert_credential_absent(self, error)
+
+    def test_neither_client_chains_an_aiohttp_exception(self):
+        """Check the rule itself, not only one symptom of breaking it.
+
+        The key check catches a chained aiohttp exception only when that
+        exception's ``repr`` happens to print the request. Which aiohttp
+        exceptions keep the request can't be known from here, so none may be
+        chained at all.
+        """
+        for label, behaviour in _ALL_TRANSPORT_CASES:
+            with self.subTest(case=label):
+                for error in (_sync_transport_failure(behaviour),
+                              _async_transport_failure(behaviour)):
+                    for link in _chain(error):
+                        module = type(link).__module__
+                        self.assertNotEqual(
+                            module.partition(".")[0], "aiohttp",
+                            "%r chains %s.%s"
+                            % (error, module, type(link).__qualname__),
+                        )
