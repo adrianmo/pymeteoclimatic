@@ -20,6 +20,7 @@ never appears in ``repr``, logs or exceptions.
 import json
 import logging
 import socket
+from http.client import HTTPException
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -156,8 +157,18 @@ class Client:
             raise  # pragma: no cover - raise_for_status always raises
         except socket.timeout as error:
             raise TransportError("request timed out") from error
-        except URLError as error:
-            # Deliberately excludes the URL and headers from the message.
+        except (URLError, HTTPException, OSError) as error:
+            # urllib turns a failure while *sending* into URLError, but not one
+            # while *receiving*: a dropped connection, a reset, a truncated
+            # body or a garbled status line arrive as http.client or OSError
+            # exceptions. The asynchronous client reports all of them as a
+            # TransportError, so this one must too, or "except ApiError" would
+            # not catch them.
+            #
+            # Deliberately excludes the URL and headers from the message. The
+            # cause is kept: none of these standard-library exceptions holds
+            # the request, so keeping it does not expose the key, and the
+            # parity tests walk the chain to check that.
             raise TransportError(
                 "transport failure: %s" % (type(error).__name__,)
             ) from error
